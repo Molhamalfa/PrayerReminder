@@ -1,0 +1,52 @@
+/* 
+  Localizable.strings
+  PrayerReminder
+
+  Created by Mac on 25.07.2025.
+  
+*/
+"Reminders" = "Hatırlatıcılar";
+"Enable Prayer Reminders" = "Namaz Hatırlatıcılarını Etkinleştir";
+"Remind every %d minutes" = "Her %d dakikada bir hatırlat";
+"Language" = "Dil";
+"App Language" = "Uygulama Dili";
+"English" = "İngilizce";
+"Home" = "Ana Sayfa";
+"Settings" = "Ayarlar";
+"Time to pray" = "Namaz Vakti";
+"It's time for %@" = "%@ namazı vakti geldi.";
+"Reminder to Pray" = "Namaz Hatırlatıcısı";
+"You haven’t marked %@ as prayed yet." = "%@ namazını henüz kılmadınız.";
+"Prayed" = "Kılındı";
+"Missed" = "Kaçırıldı";
+"Active" = "Aktif";
+"Coming Soon" = "Yakında";
+"Prayer Times" = "Namaz Vakitleri";
+"Today's Prayers" = "Bugünkü Namazlar";
+"Time until %@" = "%@'a kalan süre";
+"Prayer times not available" = "Namaz vakitleri mevcut değil";
+"Loading..." = "Yükleniyor...";
+"Reminder Interval" = "Hatırlatma Aralığı";
+"If you notice any glitches while changing languages, please try exiting the app completely and re-entering after changing the language." = "Dil değiştirirken herhangi bir aksaklık fark ederseniz, lütfen uygulamadan tamamen çıkıp tekrar girmeyi deneyin.";
+"Fajr" = "İmsak";
+"Dhuhr" = "Öğle";
+"Asr" = "İkindi";
+"Maghrib" = "Akşam";
+"Isha" = "Yatsı";
+"العربية" = "Arapça";
+"Türkçe" = "Türkçe";
+"Prayer Time Calculation Method" = "Namaz Vakti Hesaplama Yöntemi";
+"Method" = "Yöntem";
+"Shia Ithna-Ashari" = "Şii Oniki İmam";
+"University of Islamic Sciences, Karachi" = "Karaçi İslam Bilimleri Üniversitesi";
+"Islamic Society of North America" = "Kuzey Amerika İslam Topluluğu";
+"Muslim World League" = "Müslüman Dünya Ligi";
+"Umm Al-Qura University, Makkah" = "Ümmü'l-Kurra Üniversitesi, Mekke";
+"Egyptian General Authority of Survey" = "Mısır Genel Araştırma Kurumu";
+"Institute of Geophysics, University of Tehran" = "Jeofizik Enstitüsü, Tahran Üniversitesi";
+"Kuwait" = "Kuveyt";
+"Qatar" = "Katar";
+"Majlis Ugama Islam Singapura (MUIS)" = "Singapur İslam Dini Konseyi (MUIS)";
+"Union Organization Islamic de France" = "Fransa İslam Örgütleri Birliği";
+"Diyanet İşleri Başkanlığı, Turkey" = "Diyanet İşleri Başkanlığı, Türkiye";
+"Spiritual Administration of Muslims of Russia" = "Rusya Müslümanları Manevi İdaresi";

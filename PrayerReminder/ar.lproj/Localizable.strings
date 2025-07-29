@@ -1,0 +1,52 @@
+/* 
+  Localizable.strings
+  PrayerReminder
+
+  Created by Mac on 25.07.2025.
+  
+*/
+"Reminders" = "التذكيرات";
+"Enable Prayer Reminders" = "تفعيل تذكيرات الصلاة";
+"Remind every %d minutes" = "تذكير كل %d دقيقة";
+"Language" = "اللغة";
+"App Language" = "لغة التطبيق";
+"English" = "الإنجليزية";
+"Home" = "الرئيسية";
+"Settings" = "الإعدادات";
+"Time to pray" = "حان وقت الصلاة";
+"It's time for %@" = "حان وقت صلاة %@";
+"Reminder to Pray" = "تذكير بالصلاة";
+"You haven’t marked %@ as prayed yet." = "لم تقم بتحديد صلاة %@ كمصلى بعد.";
+"Prayed" = "تمت الصلاة";
+"Missed" = "فائتة";
+"Active" = "حالياً";
+"Coming Soon" = "قريباً";
+"Prayer Times" = "أوقات الصلاة";
+"Today's Prayers" = "صلوات اليوم";
+"Time until %@" = "الوقت المتبقي حتى %@";
+"Prayer times not available" = "أوقات الصلاة غير متاحة";
+"Loading..." = "جار التحميل...";
+"Reminder Interval" = "فترة التذكير";
+"If you notice any glitches while changing languages, please try exiting the app completely and re-entering after changing the language." = "إذا لاحظت أي مشاكل أثناء تغيير اللغة، يرجى محاولة الخروج من التطبيق بالكامل وإعادة الدخول بعد تغيير اللغة.";
+"Fajr" = "الفجر";
+"Dhuhr" = "الظهر";
+"Asr" = "العصر";
+"Maghrib" = "المغرب";
+"Isha" = "العشاء";
+"العربية" = "العربية";
+"Türkçe" = "التركية";
+"Prayer Time Calculation Method" = "طريقة حساب وقت الصلاة";
+"Method" = "الطريقة";
+"Shia Ithna-Ashari" = "الشيعة الاثنا عشرية";
+"University of Islamic Sciences, Karachi" = "جامعة العلوم الإسلامية، كراتشي";
+"Islamic Society of North America" = "الجمعية الإسلامية لأمريكا الشمالية";
+"Muslim World League" = "رابطة العالم الإسلامي";
+"Umm Al-Qura University, Makkah" = "جامعة أم القرى، مكة المكرمة";
+"Egyptian General Authority of Survey" = "الهيئة المصرية العامة للمساحة";
+"Institute of Geophysics, University of Tehran" = "معهد الجيوفيزياء، جامعة طهران";
+"Kuwait" = "الكويت";
+"Qatar" = "قطر";
+"Majlis Ugama Islam Singapura (MUIS)" = "المجلس الإسلامي الديني في سنغافورة (MUIS)";
+"Union Organization Islamic de France" = "اتحاد المنظمات الإسلامية في فرنسا";
+"Diyanet İşleri Başkanlığı, Turkey" = "رئاسة الشؤون الدينية، تركيا";
+"Spiritual Administration of Muslims of Russia" = "الإدارة الروحية لمسلمي روسيا";

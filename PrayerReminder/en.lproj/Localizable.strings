@@ -1,0 +1,52 @@
+/* 
+  Localizable.strings
+  PrayerReminder
+
+  Created by Mac on 25.07.2025.
+  
+*/
+"Reminders" = "Reminders";
+"Enable Prayer Reminders" = "Enable Prayer Reminders";
+"Remind every %d minutes" = "Remind every %d minutes";
+"Language" = "Language";
+"App Language" = "App Language";
+"English" = "English";
+"Home" = "Home";
+"Settings" = "Settings";
+"Time to pray" = "Time to pray";
+"It's time for %@" = "It's time for %@";
+"Reminder to Pray" = "Reminder to Pray";
+"You haven’t marked %@ as prayed yet." = "You haven’t marked %@ as prayed yet.";
+"Prayed" = "Prayed";
+"Missed" = "Missed";
+"Active" = "Active";
+"Coming Soon" = "Coming Soon";
+"Prayer Times" = "Prayer Times";
+"Today's Prayers" = "Today's Prayers";
+"Time until %@" = "Time until %@";
+"Prayer times not available" = "Prayer times not available";
+"Loading..." = "Loading...";
+"Reminder Interval" = "Reminder Interval";
+"If you notice any glitches while changing languages, please try exiting the app completely and re-entering after changing the language." = "If you notice any glitches while changing languages, please try exiting the app completely and re-entering after changing the language.";
+"Fajr" = "Fajr";
+"Dhuhr" = "Dhuhr";
+"Asr" = "Asr";
+"Maghrib" = "Maghrib";
+"Isha" = "Isha";
+"العربية" = "العربية"; // Keeping as Arabic script as per your SettingsView
+"Türkçe" = "Türkçe"; // Keeping as Turkish script as per your SettingsView
+"Prayer Time Calculation Method" = "Prayer Time Calculation Method";
+"Method" = "Method";
+"Shia Ithna-Ashari" = "Shia Ithna-Ashari";
+"University of Islamic Sciences, Karachi" = "University of Islamic Sciences, Karachi";
+"Islamic Society of North America" = "Islamic Society of North America";
+"Muslim World League" = "Muslim World League";
+"Umm Al-Qura University, Makkah" = "Umm Al-Qura University, Makkah";
+"Egyptian General Authority of Survey" = "Egyptian General Authority of Survey";
+"Institute of Geophysics, University of Tehran" = "Institute of Geophysics, University of Tehran";
+"Kuwait" = "Kuwait";
+"Qatar" = "Qatar";
+"Majlis Ugama Islam Singapura (MUIS)" = "Majlis Ugama Islam Singapura (MUIS)";
+"Union Organization Islamic de France" = "Union Organization Islamic de France";
+"Diyanet İşleri Başkanlığı, Turkey" = "Diyanet İşleri Başkanlığı, Turkey";
+"Spiritual Administration of Muslims of Russia" = "Spiritual Administration of Muslims of Russia";
