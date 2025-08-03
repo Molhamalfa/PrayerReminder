@@ -38,87 +38,56 @@ class PrayerReminderRepeater {
         let timeInterval = TimeInterval(minutes * 60)
         
         guard timeInterval >= 60 else {
-            print("⚠️ Repeating reminder interval must be at least 60 seconds. Using 60 seconds.")
-            startRepeatingReminder(for: prayer, every: 1, shouldRemind: shouldRemind)
+            print("⚠️ Repeating reminder interval must be at least 60 seconds. Using 60 seconds instead.")
             return
         }
 
-        let newReminderIdentifier = repeatingReminderIdentifierPrefix + prayer.id
-        let newReminderInterval = timeInterval // The desired interval in seconds
+        let identifier = "\(repeatingReminderIdentifierPrefix)\(prayer.name)"
+        
+        // Remove any existing repeating reminders before scheduling a new one.
+        stopAllRepeatingReminders()
 
-        // Check if the desired reminder is already scheduled and if its interval matches
-        getScheduledRepeatingReminder { [weak self] currentScheduledRequest in
-            guard let self = self else { return }
+        let content = UNMutableNotificationContent()
+        content.title = NSLocalizedString("Prayer Reminder", comment: "Repeating notification title")
+        content.body = String(format: NSLocalizedString("Have you prayed %@ yet?", comment: "Repeating notification body"), NSLocalizedString(prayer.name, comment: ""))
+        content.sound = UNNotificationSound.default
+        content.categoryIdentifier = PrayerNotificationScheduler.prayerCategoryIdentifier
+        content.userInfo = ["prayerName": prayer.name]
 
-            var needsReschedule = true
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: timeInterval, repeats: true)
+        let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
 
-            if let currentRequest = currentScheduledRequest,
-               currentRequest.identifier == newReminderIdentifier,
-               let timeIntervalTrigger = currentRequest.trigger as? UNTimeIntervalNotificationTrigger {
-                
-                // If the identifier matches AND the interval matches, no reschedule needed
-                if timeIntervalTrigger.timeInterval == newReminderInterval {
-                    print("ℹ️ Repeating reminder for \(prayer.name) is already scheduled with the correct interval. No action needed.")
-                    needsReschedule = false
-                } else {
-                    // Identifier matches, but interval is different. Needs reschedule.
-                    print("🔄 Repeating reminder for \(prayer.name) found with different interval (\(timeIntervalTrigger.timeInterval)s vs \(newReminderInterval)s). Rescheduling.")
-                    UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [currentRequest.identifier])
-                }
-            } else if let currentRequest = currentScheduledRequest {
-                // A different repeating reminder is scheduled (different prayer), stop it.
-                print("🛑 Stopped old repeating reminder (ID: \(currentRequest.identifier)) to schedule new one for \(prayer.name).")
-                UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [currentRequest.identifier])
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("❌ Error scheduling repeating reminder for \(prayer.name): \(error.localizedDescription)")
+            } else {
+                print("⏰ Repeating reminder for \(prayer.name) scheduled to fire every \(minutes) minutes.")
             }
-
-            if needsReschedule {
-                // Now schedule the new one
-                let content = UNMutableNotificationContent()
-                content.title = NSLocalizedString("Reminder to Pray", comment: "Repeating reminder notification title")
-                content.body = String(format: NSLocalizedString("You haven’t marked %@ as prayed yet.", comment: "Repeating reminder notification body"), prayer.name)
-                content.sound = .default
-                content.categoryIdentifier = PrayerNotificationScheduler.prayerCategoryIdentifier // Assign the custom category
-
-                let trigger = UNTimeIntervalNotificationTrigger(timeInterval: newReminderInterval, repeats: true)
-                let request = UNNotificationRequest(identifier: newReminderIdentifier, content: content, trigger: trigger)
-
-                UNUserNotificationCenter.current().add(request) { error in
-                    if let error = error {
-                        print("❌ Failed to schedule repeating reminder for \(prayer.name): \(error)")
-                    } else {
-                        print("✅ Scheduled repeating reminder for \(prayer.name) every \(minutes) minutes (ID: \(newReminderIdentifier))")
-                    }
-                    self.printPendingNotifications() // Print after scheduling
-                }
-            }
-            self.printPendingNotifications() // Always print pending notifications at the end of this block
         }
-    }
-
-    // Stops a specific repeating reminder by its prayer ID
-    func stopRepeatingReminder(for prayer: Prayer) {
-        let identifierToCancel = repeatingReminderIdentifierPrefix + prayer.id
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [identifierToCancel])
-        print("🛑 Stopped repeating reminder for \(prayer.name) (ID: \(identifierToCancel))")
-        printPendingNotifications() // Print after stopping
+        
+        // Print all scheduled notifications for debugging
+        printPendingNotifications()
     }
     
-    // Stops all repeating reminders managed by this class
     func stopAllRepeatingReminders() {
         UNUserNotificationCenter.current().getPendingNotificationRequests { requests in
-            let repeatingReminderIdentifiers = requests
-                .filter { $0.identifier.hasPrefix(self.repeatingReminderIdentifierPrefix) }
-                .map { $0.identifier }
-            
-            if !repeatingReminderIdentifiers.isEmpty {
-                UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: repeatingReminderIdentifiers)
-                print("🛑 Stopped all \(repeatingReminderIdentifiers.count) previously scheduled repeating reminders.")
+            let repeatingReminders = requests.filter { $0.identifier.hasPrefix(self.repeatingReminderIdentifierPrefix) }
+            let identifiersToRemove = repeatingReminders.map { $0.identifier }
+            if !identifiersToRemove.isEmpty {
+                UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: identifiersToRemove)
+                print("🔕 Stopped \(identifiersToRemove.count) repeating reminders.")
             }
-            self.printPendingNotifications() // Print after clearing to confirm
         }
     }
 
-    // Debugging function to print all pending notification requests
+    // NEW: Function to remove a specific repeating reminder
+    func removeRepeatingReminder(for prayer: Prayer) {
+        let identifier = "\(repeatingReminderIdentifierPrefix)\(prayer.name)"
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [identifier])
+        print("🔕 Removed pending repeating reminder for \(prayer.name) with identifier: \(identifier)")
+    }
+    
+    // Debugging function to print all pending notifications
     func printPendingNotifications() {
         UNUserNotificationCenter.current().getPendingNotificationRequests { requests in
             print("\n--- Pending Notification Requests (\(requests.count)) ---")

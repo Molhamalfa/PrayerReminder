@@ -38,22 +38,16 @@ class PrayerDataStore {
             print("❌ DataStore: Failed to encode prayer history: \(error)")
         }
     }
-
-    // Loads prayers for the current day from UserDefaults
-    func loadPrayers() -> SavedPrayerData? {
-        print("💾 DataStore: Attempting to load current day's data from UserDefaults.")
+    
+    // NEW: Loads saved prayers for today from UserDefaults
+    func loadSavedPrayersForToday() -> SavedPrayerData? {
         let todayString = DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .none)
-        
-        if let history = loadAllSavedPrayerData() {
-            if let currentDayData = history.first(where: { $0.date == todayString }) {
-                print("✅ DataStore: Loaded saved prayers for today: \(currentDayData.date). Count: \(currentDayData.prayers.count)")
-                return currentDayData
-            } else {
-                print("ℹ️ DataStore: No saved prayers found for today: \(todayString).")
-                return nil
-            }
+        if let history = loadAllSavedPrayerData(),
+           let currentDayData = history.first(where: { $0.date == todayString }) {
+            print("✅ DataStore: Loaded saved prayers for today: \(currentDayData.date). Count: \(currentDayData.prayers.count)")
+            return currentDayData
         } else {
-            print("ℹ️ DataStore: No prayer history found in UserDefaults.")
+            print("ℹ️ DataStore: No saved prayers found for today: \(todayString).")
             return nil
         }
     }

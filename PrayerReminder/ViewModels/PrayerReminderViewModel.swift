@@ -39,405 +39,254 @@ class PrayerReminderViewModel: NSObject, ObservableObject, CLLocationManagerDele
 
     @Published var prayers: [Prayer] = [] {
         didSet {
-            dataStore.savePrayers(prayers) // Save current day's data to history
-            updateNextPrayer()
-            updateHistoricalData(for: prayers) // Ensure historical data is updated
+            dataStore.savePrayers(prayers)
+            updateActivePrayerAndTimer()
+            PrayerNotificationScheduler.shared.scheduleNotifications(for: prayers)
+            updateHistoricalData(for: prayers)
         }
     }
     
     @Published var historicalPrayerData: [SavedPrayerData] = []
-
-    @Published var currentActivePrayer: Prayer?
-    @Published var nextPrayerName: String = NSLocalizedString("Loading...", comment: "")
-    @Published var timeUntilNextPrayer: String = ""
-
-    private var timer: AnyCancellable?
     
+    // MARK: - Prayer Time and Logic
+    @Published private(set) var currentActivePrayer: Prayer?
+    @Published private(set) var nextPrayerName: String = ""
+    @Published private(set) var timeUntilNextPrayer: String = ""
+    private var prayerTimer: AnyCancellable?
+    private var fetchCancellable: AnyCancellable?
+    
+    // MARK: - Initializer & Setup
     override init() {
         super.init()
-        locationManager.delegate = self
-        UNUserNotificationCenter.current().delegate = self
+        setupLocationManager()
+        setupNotificationCenter()
+        loadHistoricalData()
+        PrayerNotificationScheduler.shared.registerNotificationCategory()
         
-        let todayString = DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .none)
-
-        self.historicalPrayerData = dataStore.loadAllSavedPrayerData() ?? []
-        print("ViewModel: Loaded \(self.historicalPrayerData.count) days of historical data.")
-
-        if self.lastFetchedDate != todayString {
-            print("ViewModel: New day detected or no lastFetchedDate. Forcing fresh fetch.")
-            self.prayers = [] // Clear current day's prayers
-            Task { await fetchPrayerTimes() }
-        } else if let savedData = dataStore.loadPrayers() {
-            self.prayers = savedData.prayers
-            print("ViewModel: Loaded prayers from DataStore for today.")
-            updatePrayerStatuses()
-            handleReminderRepeats()
-            // FIX: Explicitly schedule notifications when loading saved data for today
-            PrayerNotificationScheduler.shared.scheduleNotifications(for: prayers)
-        } else {
-            print("ViewModel: No saved prayers for today. Fetching new times.")
-            Task { await fetchPrayerTimes() }
-        }
-        setupTimer()
+        // Timer to update the countdown every minute
+        prayerTimer = Timer.publish(every: 60, on: .main, in: .common)
+            .autoconnect()
+            .sink { [weak self] _ in
+                guard let self = self else { return }
+                self.updateActivePrayerAndTimer()
+                self.updateIsDayState()
+                
+                // Fetch new prayer times at Fajr to get tomorrow's times if needed
+                if self.isFajrTime(Date()) {
+                    print("⏰ It's Fajr time. Refreshing prayer times for the new day.")
+                    Task { await self.loadPrayerTimes() }
+                }
+            }
     }
-
-    func requestLocation() {
-        if !isLoading {
-            isLoading = true
-            loadingFailed = false
-        }
-        locationManager.requestWhenInUseAuthorization()
+    
+    private func setupLocationManager() {
+        locationManager.delegate = self
+        locationManager.desiredAccuracy = kCLLocationAccuracyBest
         locationManager.startUpdatingLocation()
     }
+    
+    private func setupNotificationCenter() {
+        UNUserNotificationCenter.current().delegate = self
+    }
+    
+    private func loadHistoricalData() {
+        if let savedData = dataStore.loadAllSavedPrayerData() {
+            self.historicalPrayerData = savedData
+            print("✅ ViewModel: Loaded \(self.historicalPrayerData.count) days of historical data.")
+        }
+    }
+    
+    private func updateActivePrayerAndTimer() {
+        let now = Date()
+        guard !prayers.isEmpty else {
+            print("⚠️ ViewModel: No active prayer found. Stopping repeating reminders.")
+            PrayerReminderRepeater.shared.stopAllRepeatingReminders()
+            return
+        }
 
-    nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        Task { @MainActor in
-            guard let location = locations.first else {
-                if self.isLoading {
-                    self.isLoading = false
-                    self.loadingFailed = true
-                }
-                return
-            }
-            manager.stopUpdatingLocation()
+        if let (nextPrayer, nextPrayerDate) = timeLogicHelper.findNextPrayer(from: prayers, now: now) {
+            currentActivePrayer = timeLogicHelper.isPrayerCurrentlyActive(nextPrayer, allPrayers: prayers) ? nextPrayer : nil
+            nextPrayerName = String(format: NSLocalizedString("Time until %@", comment: "Time until next prayer"), NSLocalizedString(nextPrayer.name, comment: ""))
             
-            let currentLocation = location.coordinate
-            let savedLocation = (lastFetchedLatitude, lastFetchedLongitude)
+            let timeInterval = nextPrayerDate.timeIntervalSince(now)
+            timeUntilNextPrayer = timeLogicHelper.format(timeInterval: timeInterval)
             
-            let locationChanged = abs(currentLocation.latitude - (savedLocation.0 ?? 0)) > 0.001 ||
-                                  abs(currentLocation.longitude - (savedLocation.1 ?? 0)) > 0.001
-            
-            let todayString = DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .none)
-
-            if (!self.isLoading && (self.prayers.isEmpty || self.lastFetchedDate != todayString || locationChanged)) {
-                await self.fetchPrayerTimes(for: currentLocation)
-            } else if self.isLoading {
-                self.isLoading = false
+            // Manage repeating reminders
+            if let activePrayer = currentActivePrayer, activePrayer.status == .upcoming {
+                let reminderInterval = userReminderIntervalInMinutes
+                let shouldRemind = reminderEnabled && (activePrayer.status == .upcoming)
+                PrayerReminderRepeater.shared.startRepeatingReminder(for: activePrayer, every: reminderInterval, shouldRemind: shouldRemind)
             } else {
-                self.isLoading = false
+                PrayerReminderRepeater.shared.stopAllRepeatingReminders()
             }
-        }
-    }
-
-    nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        Task { @MainActor in
-            print("❌ LocationManager: Failed with error: \(error.localizedDescription)")
-            self.loadingFailed = true
-            self.isLoading = false
-        }
-    }
-
-    nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        Task { @MainActor in
-            switch manager.authorizationStatus {
-            case .authorizedWhenInUse, .authorizedAlways:
-                manager.startUpdatingLocation()
-                self.loadingFailed = false
-                let todayString = DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .none)
-                if self.prayers.isEmpty || self.lastFetchedDate != todayString && !self.isLoading {
-                    self.requestLocation()
-                }
-            case .denied, .restricted:
-                self.isLoading = false
-                self.loadingFailed = true
-            case .notDetermined:
-                self.isLoading = false
-            @unknown default:
-                self.isLoading = false
-            }
-        }
-    }
-
-    func fetchPrayerTimes(for coordinate: CLLocationCoordinate2D? = nil) async {
-        isLoading = true
-        loadingFailed = false
-
-        let lat: Double
-        let lon: Double
-        
-        if let coordinate = coordinate {
-            lat = coordinate.latitude
-            lon = coordinate.longitude
         } else {
-            lat = 41.0082 // Istanbul latitude
-            lon = 28.9784 // Istanbul longitude
-            print("Using default Istanbul coordinates for prayer times.")
+            nextPrayerName = NSLocalizedString("Waiting for Fajr", comment: "")
+            timeUntilNextPrayer = "--h --m"
+        }
+    }
+    
+    // Check if it is Fajr time
+    private func isFajrTime(_ date: Date) -> Bool {
+        guard let fajrPrayer = prayers.first(where: { $0.name == "Fajr" }) else { return false }
+        guard let fajrTime = timeLogicHelper.date(for: fajrPrayer.time, basedOn: date) else { return false }
+        
+        let nowComponents = Calendar.current.dateComponents([.hour, .minute], from: date)
+        let fajrComponents = Calendar.current.dateComponents([.hour, .minute], from: fajrTime)
+        
+        return nowComponents.hour == fajrComponents.hour && nowComponents.minute == fajrComponents.minute
+    }
+    
+    // Update isDay based on Fajr and Maghrib times
+    private func updateIsDayState() {
+        self.isDay = timeLogicHelper.isDaytime(prayers: prayers)
+    }
+
+    // MARK: - API & Location Management
+    func requestLocation() {
+        print("🌍 ViewModel: Requesting location authorization status...")
+        switch locationManager.authorizationStatus {
+        case .notDetermined:
+            locationManager.requestWhenInUseAuthorization()
+        case .authorizedAlways, .authorizedWhenInUse:
+            print("🌍 ViewModel: Location authorization granted. Requesting location.")
+            locationManager.requestLocation()
+        case .denied, .restricted:
+            loadingFailed = true
+            print("❌ ViewModel: Location authorization denied or restricted.")
+        @unknown default:
+            loadingFailed = true
+            print("❌ ViewModel: Unknown location authorization status.")
+        }
+    }
+
+    // FIX: Made loadPrayerTimes an async function
+    func loadPrayerTimes() async {
+        isLoading = true
+        
+        defer {
+            isLoading = false
+        }
+
+        guard let latitude = lastFetchedLatitude, let longitude = lastFetchedLongitude else {
+            print("⚠️ ViewModel: No last fetched location, cannot load prayer times.")
+            return
+        }
+
+        let todayString = DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .none)
+        if let savedPrayers = dataStore.loadSavedPrayersForToday(),
+           lastFetchedDate == todayString {
+            print("✅ ViewModel: Location and date are the same. Loading saved prayers.")
+            self.prayers = savedPrayers.prayers
+            return
         }
         
         do {
-            let fetchedPrayers = try await apiService.fetchPrayerTimes(
-                latitude: lat,
-                longitude: lon,
-                method: selectedCalculationMethod
-            )
+            print("🌍 ViewModel: Fetching prayer times for lat: \(latitude), lon: \(longitude), method: \(selectedCalculationMethod)")
+            let fetchedPrayers = try await apiService.fetchPrayerTimes(latitude: latitude, longitude: longitude, method: selectedCalculationMethod)
             
-            let todayString = DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .none)
-            let loadedSavedData = dataStore.loadPrayers()
-
-            var finalPrayers = fetchedPrayers
-            if let loaded = loadedSavedData, loaded.date == todayString {
-                finalPrayers = fetchedPrayers.map { newPrayer in
-                    if let savedPrayer = loaded.prayers.first(where: { $0.name == newPrayer.name }) {
-                        if newPrayer.time == savedPrayer.time {
-                            return Prayer(name: newPrayer.name, time: newPrayer.time, status: savedPrayer.status)
-                        }
-                    }
-                    return newPrayer
-                }
+            let prayersWithUpcomingStatus = fetchedPrayers.map { prayer in
+                var newPrayer = prayer
+                newPrayer.status = .upcoming
+                return newPrayer
             }
             
-            self.prayers = finalPrayers
-            updatePrayerStatuses()
-            handleReminderRepeats()
-            PrayerNotificationScheduler.shared.scheduleNotifications(for: prayers)
-
-            self.lastFetchedLatitude = lat
-            self.lastFetchedLongitude = lon
+            self.prayers = prayersWithUpcomingStatus
             self.lastFetchedDate = todayString
-
-            isLoading = false
-            loadingFailed = false
-
+            print("✅ ViewModel: Prayer times fetched successfully. Count: \(self.prayers.count)")
+            
         } catch {
-            print("Failed to fetch prayer times: \(error)")
-            isLoading = false
+            print("❌ ViewModel: Failed to fetch prayer times: \(error.localizedDescription)")
             loadingFailed = true
         }
     }
     
     func refreshPrayerTimes() async {
-        await fetchPrayerTimes()
-    }
-
-    private func updatePrayerStatuses() {
-        var updatedPrayers = prayers
-        _ = Date()
-        var currentActive: Prayer? = nil
-
-        for i in 0..<updatedPrayers.count {
-            let prayer = updatedPrayers[i]
-            
-            if prayer.name == "Sunrise" {
-                if timeLogicHelper.hasPrayerTimePassed(for: prayer) {
-                    updatedPrayers[i].status = .completed
-                } else {
-                    updatedPrayers[i].status = .upcoming
-                }
-                continue
-            }
-
-            let hasPassed = timeLogicHelper.hasPrayerTimePassed(for: prayer)
-            let windowEnded = timeLogicHelper.hasPrayerWindowEnded(for: prayer, allPrayers: prayers)
-
-            if prayer.status == .completed {
-                continue
-            } else if windowEnded {
-                updatedPrayers[i].status = .missed
-            } else if hasPassed {
-                updatedPrayers[i].status = .upcoming
-                if currentActive == nil {
-                    currentActive = updatedPrayers[i]
-                }
-            } else {
-                updatedPrayers[i].status = .upcoming
-            }
-        }
+        print("🔄 ViewModel: Manual refresh requested.")
+        isLoading = true
+        defer { isLoading = false }
         
-        if updatedPrayers != prayers {
-            self.prayers = updatedPrayers
-        }
-
-        self.currentActivePrayer = currentActive
-        handleReminderRepeats()
-        updateDayNightStatus()
+        await loadPrayerTimes()
     }
     
-    func togglePrayerStatus(for prayer: Prayer, to newStatus: PrayerStatus) {
-        guard prayer.name != "Sunrise" else {
-            print("⚠️ ViewModel: Cannot manually toggle Sunrise status.")
-            return
-        }
-
-        if let index = prayers.firstIndex(where: { $0.id == prayer.id }) {
-            var updatedPrayers = prayers
-            if (prayer.status == .upcoming && newStatus == .completed) ||
-               (prayer.status == .missed && newStatus == .completed) {
-                updatedPrayers[index].status = newStatus
-                self.prayers = updatedPrayers
-                
-                if currentActivePrayer?.id == prayer.id {
-                    currentActivePrayer = nil
-                }
-                
-                PrayerNotificationScheduler.shared.cancelSpecificNotification(forPrayerNamed: prayer.name)
-                PrayerReminderRepeater.shared.stopAllRepeatingReminders()
-                
-                updateNextPrayer()
-                handleReminderRepeats()
-            } else {
-                print("⚠️ ViewModel: Invalid status transition attempt for \(prayer.name): from \(prayer.status.rawValue) to \(newStatus.rawValue)")
-            }
-        }
-    }
-
-    private func updateNextPrayer() {
-        let now = Date()
-        guard let (nextPrayer, nextPrayerDate) = timeLogicHelper.findNextPrayerAndTime(allPrayers: prayers) else {
-            nextPrayerName = NSLocalizedString("All prayers completed for today.", comment: "")
-            timeUntilNextPrayer = ""
-            return
-        }
-
-        let localizedNextPrayerName = NSLocalizedString(nextPrayer.name, comment: "")
-
-        let timeInterval = nextPrayerDate.timeIntervalSince(now)
-        let formattedTime = timeLogicHelper.format(timeInterval: timeInterval)
-
-        if timeInterval > 0 {
-            nextPrayerName = String(format: NSLocalizedString("Time until %@", comment: ""), localizedNextPrayerName)
-            timeUntilNextPrayer = formattedTime
-        } else {
-            nextPrayerName = String(format: NSLocalizedString("It's time for %@", comment: ""), localizedNextPrayerName)
-            timeUntilNextPrayer = ""
-        }
-        
-        isDay = timeLogicHelper.isDaytime(prayers: prayers, currentTime: now)
-    }
-
-    private func updateDayNightStatus() {
-        self.isDay = timeLogicHelper.isDaytime(prayers: prayers, currentTime: Date())
-    }
-
-    private func setupTimer() {
-        timer = Timer.publish(every: 1, on: .main, in: .common)
-            .autoconnect()
-            .sink { [weak self] _ in
-                guard let self = self else { return }
-                self.updatePrayerStatuses()
-                self.updateNextPrayer()
-            }
-    }
-
-    func applyLanguageChange(_ newLanguageCode: String) {
-        UserDefaults.standard.set(newLanguageCode, forKey: "selectedLanguageCode")
-        selectedLanguageCode = newLanguageCode
-        
-        Task {
-            isLanguageChanging = true
-            await fetchPrayerTimes()
-            isLanguageChanging = false
-        }
-    }
-    
-    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
-        let userInfo = response.notification.request.content.userInfo
-        guard let prayerName = userInfo["prayerName"] as? String else {
-            completionHandler()
-            return
-        }
-        
+    // MARK: - CLLocationManagerDelegate
+    // FIX: Add 'nonisolated' to fix Swift 6 concurrency error.
+    nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        print("🌍 LocationManagerDelegateHelper: Authorization status changed to \(manager.authorizationStatus.rawValue).")
+        // FIX: Wrap main actor-isolated work in a Task
         Task { @MainActor in
-            switch response.actionIdentifier {
-            case PrayerNotificationScheduler.prayedActionIdentifier:
-                if let prayerToUpdate = self.prayers.first(where: { $0.name == prayerName }) {
-                    self.togglePrayerStatus(for: prayerToUpdate, to: .completed)
-                }
-                
-            case UNNotificationDefaultActionIdentifier:
-                break
-                
-            case UNNotificationDismissActionIdentifier:
-                break
-                
-            default:
-                break
-            }
-            completionHandler()
+            requestLocation()
         }
     }
     
+    // FIX: Add 'nonisolated' to fix Swift 6 concurrency error.
+    nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        guard let location = locations.first else { return }
+        print("🌍 LocationManagerDelegateHelper: Location updated.")
+
+        // FIX: Wrap main actor-isolated work in a Task
+        Task { @MainActor in
+            if location.coordinate.latitude != lastFetchedLatitude || location.coordinate.longitude != lastFetchedLongitude {
+                print("🌍 ViewModel: Location updated. Latitude: \(location.coordinate.latitude), Longitude: \(location.coordinate.longitude)")
+                self.lastFetchedLatitude = location.coordinate.latitude
+                self.lastFetchedLongitude = location.coordinate.longitude
+                await self.loadPrayerTimes()
+            } else {
+                print("🌍 ViewModel: Location is the same. No need to fetch.")
+            }
+        }
+    }
+
+    // FIX: Add 'nonisolated' to fix Swift 6 concurrency error.
+    nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        print("❌ LocationManagerDelegateHelper: Failed to get location: \(error.localizedDescription)")
+        // FIX: Wrap main actor-isolated work in a Task
+        Task { @MainActor in
+            loadingFailed = true
+            isLoading = false
+        }
+    }
+    
+    // MARK: - UNUserNotificationCenterDelegate
+    // FIX: Add 'nonisolated' to fix Swift 6 concurrency error.
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        completionHandler()
+    }
+    
+    // FIX: Add 'nonisolated' to fix Swift 6 concurrency error.
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
-        completionHandler([.banner, .sound, .badge])
-    }
-    
-    func handleReminderRepeats() {
-        guard reminderEnabled else {
-            PrayerReminderRepeater.shared.stopAllRepeatingReminders()
-            return
-        }
-
-        let currentlyActiveAndUpcomingPrayer = prayers.first(where: {
-            guard $0.name != "Sunrise" else { return false }
-            
-            let isActive = timeLogicHelper.isPrayerCurrentlyActive($0, allPrayers: prayers)
-            let isUpcoming = $0.status == .upcoming
-            return isActive && isUpcoming
-        })
-        
-        self.currentActivePrayer = currentlyActiveAndUpcomingPrayer
-
-        if let activePrayer = currentlyActiveAndUpcomingPrayer {
-            PrayerReminderRepeater.shared.stopAllRepeatingReminders()
-            PrayerReminderRepeater.shared.startRepeatingReminder(for: activePrayer, every: userReminderIntervalInMinutes, shouldRemind: true)
-        } else {
-            PrayerReminderRepeater.shared.stopAllRepeatingReminders()
-        }
-    }
-    
-    // MARK: - Public Helper Methods for Views
-    func checkPrayerTimePassed(for prayer: Prayer) -> Bool {
-        return timeLogicHelper.hasPrayerTimePassed(for: prayer)
+        completionHandler([.banner, .sound])
     }
 
-    func checkPrayerCurrentlyActive(for prayer: Prayer) -> Bool {
-        guard !prayers.isEmpty else { return false }
-        return timeLogicHelper.isPrayerCurrentlyActive(prayer, allPrayers: self.prayers)
-    }
-
-    func checkPrayerWindowEnded(for prayer: Prayer) -> Bool {
-        guard !prayers.isEmpty else { return false }
-        return timeLogicHelper.hasPrayerWindowEnded(for: prayer, allPrayers: self.prayers)
-    }
-
-    // MARK: - UI Display Logic (Closures for Views)
+    // MARK: - UI Logic
     func statusIcon(for prayer: Prayer) -> String {
-        if prayer.name == "Sunrise" { return "sunrise.fill" }
-        
         switch prayer.status {
-        case .upcoming:
-            if checkPrayerCurrentlyActive(for: prayer) {
-                return "hourglass.tophalf.filled"
-            }
-            return "hourglass"
         case .completed:
             return "checkmark.circle.fill"
         case .missed:
             return "xmark.circle.fill"
+        case .upcoming:
+            if timeLogicHelper.isPrayerCurrentlyActive(prayer, allPrayers: prayers) {
+                return "hourglass.tophalf.filled"
+            }
+            return "clock.fill"
         }
     }
 
     func statusColor(for prayer: Prayer) -> Color {
-        if prayer.name == "Sunrise" { return .orange }
-        
         switch prayer.status {
-        case .upcoming:
-            if checkPrayerCurrentlyActive(for: prayer) {
-                return .blue
-            }
-            return .gray
         case .completed:
             return .green
         case .missed:
             return .red
+        case .upcoming:
+            return .blue
         }
     }
     
     func statusLabel(for prayer: Prayer) -> String {
-        if prayer.name == "Sunrise" { return NSLocalizedString("Sunrise", comment: "") }
-        
         switch prayer.status {
         case .upcoming:
-            if checkPrayerCurrentlyActive(for: prayer) {
+            if timeLogicHelper.isPrayerCurrentlyActive(prayer, allPrayers: prayers) {
                 return NSLocalizedString("Active", comment: "Label for currently active prayer")
             }
             return NSLocalizedString("Upcoming", comment: "Label for upcoming prayer")
@@ -445,6 +294,36 @@ class PrayerReminderViewModel: NSObject, ObservableObject, CLLocationManagerDele
             return NSLocalizedString("Prayed", comment: "Label for completed prayer")
         case .missed:
             return NSLocalizedString("Missed", comment: "Label for missed prayer")
+        }
+    }
+    
+    func togglePrayerStatus(for prayer: Prayer, to newStatus: PrayerStatus) {
+        guard let index = prayers.firstIndex(where: { $0.id == prayer.id }) else { return }
+        
+        prayers[index].status = newStatus
+        print("✅ ViewModel: Status of prayer '\(prayer.name)' changed to '\(newStatus)'.")
+    }
+    
+    func handleReminderRepeats() {
+        guard let currentActive = currentActivePrayer else {
+            PrayerReminderRepeater.shared.stopAllRepeatingReminders()
+            return
+        }
+        
+        if reminderEnabled && currentActive.status == .upcoming {
+            PrayerReminderRepeater.shared.startRepeatingReminder(for: currentActive, every: userReminderIntervalInMinutes, shouldRemind: true)
+        } else {
+            PrayerReminderRepeater.shared.stopAllRepeatingReminders()
+        }
+    }
+    
+    func applyLanguageChange(_ languageCode: String) {
+        isLanguageChanging = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            self.selectedLanguageCode = languageCode
+            self.isLanguageChanging = false
+            self.refreshID = UUID()
+            print("🌐 ViewModel: Language changed to \(languageCode).")
         }
     }
     

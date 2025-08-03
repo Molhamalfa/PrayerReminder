@@ -14,6 +14,7 @@ class PrayerNotificationScheduler {
     
     static let prayedActionIdentifier = "PRAYED_ACTION"
     static let prayerCategoryIdentifier = "PRAYER_REMINDER_CATEGORY"
+    private let prayerNotificationIdentifierPrefix = "prayer-reminder-"
 
     private init() {}
 
@@ -41,43 +42,51 @@ class PrayerNotificationScheduler {
         for prayer in prayers {
             guard prayer.status == .upcoming else { continue }
             
-            let notificationIdentifier = "prayer-reminder-\(prayer.name)"
+            let notificationIdentifier = "\(prayerNotificationIdentifierPrefix)\(prayer.name)"
+            
+            // Only schedule if the prayer time is in the future.
+            let now = Date()
+            let prayerDate = getDate(from: prayer.time)
+            
+            guard let prayerDate = prayerDate, now < prayerDate else {
+                continue
+            }
             
             let content = UNMutableNotificationContent()
-            content.title = NSLocalizedString("Prayer Time", comment: "Notification title for prayer time")
-            content.body = String(format: NSLocalizedString("It's time for %@.", comment: "Notification body for prayer time"), NSLocalizedString(prayer.name, comment: ""))
+            content.title = NSLocalizedString("Prayer Reminder", comment: "Notification title for prayer reminder")
+            content.body = String(format: NSLocalizedString("It's time for %@.", comment: "Notification body for prayer reminder"), NSLocalizedString(prayer.name, comment: ""))
             content.sound = UNNotificationSound.default
-            content.userInfo = ["prayerName": prayer.name]
             content.categoryIdentifier = PrayerNotificationScheduler.prayerCategoryIdentifier
+            content.userInfo = ["prayerName": prayer.name]
 
-            if let prayerDate = getDate(from: prayer.time) {
-                let calendar = Calendar.current
-                let components = calendar.dateComponents([.hour, .minute], from: prayerDate)
-                
-                let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
-                
-                let request = UNNotificationRequest(identifier: notificationIdentifier, content: content, trigger: trigger)
-                
-                UNUserNotificationCenter.current().add(request) { error in
-                    if let error = error {
-                        print("❌ Error scheduling notification for \(prayer.name): \(error.localizedDescription)")
-                    } else {
-                        print("✅ Scheduled notification for \(prayer.name) at \(prayer.time) with ID: \(notificationIdentifier)")
-                    }
+            let calendar = Calendar.current
+            let components = calendar.dateComponents([.hour, .minute], from: prayerDate)
+
+            let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+            let request = UNNotificationRequest(identifier: notificationIdentifier, content: content, trigger: trigger)
+
+            UNUserNotificationCenter.current().add(request) { error in
+                if let error = error {
+                    print("❌ Error scheduling prayer notification for \(prayer.name): \(error.localizedDescription)")
+                } else {
+                    print("🔔 Prayer notification scheduled for \(prayer.name) at \(prayer.time).")
                 }
-            } else {
-                print("❌ Could not create date for prayer: \(prayer.name) at \(prayer.time)")
             }
         }
+        
+        // Print all scheduled notifications for debugging
+        printPendingNotifications()
     }
     
-    func cancelSpecificNotification(forPrayerNamed prayerName: String) {
-        let identifierToCancel = "prayer-reminder-\(prayerName)"
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [identifierToCancel])
-        print("🔕 Cancelled notification for \(prayerName) with ID: \(identifierToCancel)")
+    // NEW: Function to remove a single pending notification
+    func removeNotification(for prayer: Prayer) {
+        let identifier = "\(prayerNotificationIdentifierPrefix)\(prayer.name)"
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [identifier])
+        print("🔕 Removed pending notification for \(prayer.name) with identifier: \(identifier)")
     }
-
-    func listPendingNotifications() {
+    
+    // Debugging function to print all pending notifications
+    func printPendingNotifications() {
         UNUserNotificationCenter.current().getPendingNotificationRequests { requests in
             print("\n--- Pending Notification Requests (\(requests.count)) ---")
             if requests.isEmpty {

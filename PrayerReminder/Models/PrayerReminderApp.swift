@@ -34,66 +34,68 @@ struct PrayerReminderApp: App {
                 .onChange(of: selectedLanguageCode) { oldValue, newLanguageCode in
                     // When language changes, update the rootViewID to force a full UI rebuild
                     rootViewID = UUID()
-                    print("🌐 App: Root View ID updated, forcing full UI rebuild for language: \(newLanguageCode)")
-                    
-                    // Optional: Add a small delay to allow SwiftUI to process the environment change
-                    // before potentially triggering other updates. This can sometimes help with glitches.
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        // Optionally, you could trigger a viewModel refresh here as well,
-                        // but `applyLanguageChange` in ViewModel already does that.
-                        print("🌐 App: Short delay completed after language change.")
-                    }
-                }
-                .onAppear {
-                    // Assign the viewModel to the AppDelegate when the app appears
-                    appDelegate.viewModel = viewModel
-                    UNUserNotificationCenter.current().delegate = appDelegate // Set delegate for notifications
-                    print("🚀 App: PrayerReminderApp did appear. Initial language: \(selectedLanguageCode)")
+                    print("🌐 App: Root View ID updated, forcing UI rebuild for language change.")
                 }
         }
     }
 }
 
-// MARK: - AppDelegate for UNUserNotificationCenterDelegate
-class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
-    // Hold a reference to the ViewModel to interact with it from notification delegate methods
-    weak var viewModel: PrayerReminderViewModel?
 
+// A custom AppDelegate to handle notifications
+// FIX: Concurrency error. UNUserNotificationCenterDelegate is nonisolated.
+//      The `userNotificationCenter` methods are not guaranteed to be called on the main thread,
+//      and they can't be implicitly @MainActor-isolated in Swift 6.
+//      Making the class `nonisolated` fixes this. We then use a Task to explicitly
+//      jump to the main actor when interacting with the @MainActor-isolated ViewModel.
+class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate, ObservableObject {
+    
+    // Hold a reference to the ViewModel
+    // Note: We cannot use @EnvironmentObject here as AppDelegate is not part of the SwiftUI view hierarchy.
+    // The viewModel is injected when the app launches in didFinishLaunchingWithOptions
+    var viewModel: PrayerReminderViewModel?
+    
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
-        // Request notification authorization on app launch
+        
+        // Request notification authorization
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
+            print("🔔 Notification permission granted: \(granted)")
+            if let error = error {
+                print("❌ Notification permission error: \(error.localizedDescription)")
+            }
             if granted {
-                print("✅ AppDelegate: Notification permission granted.")
-            } else if let error = error {
-                print("❌ AppDelegate: Notification permission error: \(error.localizedDescription)")
-            } else {
-                print("🚫 AppDelegate: Notification permission denied.")
+                // Register the notification category for the "Prayed" action
+                PrayerNotificationScheduler.shared.registerNotificationCategory()
             }
         }
         
-        // Set the UNUserNotificationCenter delegate to self
+        // Set this class as the delegate for UNUserNotificationCenter
         UNUserNotificationCenter.current().delegate = self
-        
-        // Register the custom notification category defined in PrayerNotificationScheduler
-        PrayerNotificationScheduler.shared.registerNotificationCategory()
         
         return true
     }
-
-    // Handle notification actions (e.g., "Prayed" button)
+    
+    // FIX: Removed @nonisolated. The protocol methods are already nonisolated,
+    // and AppDelegate is not an actor, so this modifier is not needed and causes a compiler error.
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
-        let userInfo = response.notification.request.content.userInfo
-        let prayerName = userInfo["prayerName"] as? String ?? "Unknown Prayer"
+        
+        guard let prayerName = response.notification.request.content.userInfo["prayerName"] as? String else {
+            print("🔔 Notification Action: Prayer name not found in user info.")
+            completionHandler()
+            return
+        }
         
         switch response.actionIdentifier {
         case PrayerNotificationScheduler.prayedActionIdentifier:
             print("🔔 Notification Action: 'Prayed' button tapped for \(prayerName).")
             // Find the prayer and update its status via the ViewModel
-            if let viewModel = viewModel, let prayerToUpdate = viewModel.prayers.first(where: { $0.name == prayerName }) {
-                viewModel.togglePrayerStatus(for: prayerToUpdate, to: .completed)
-                print("Status of \(prayerName) updated to completed.")
-            } else {
-                print("Failed to access ViewModel from AppDelegate or find prayer named \(prayerName) to update.")
+            // FIX: Use a Task to explicitly run on the main actor.
+            Task { @MainActor in
+                if let prayerToUpdate = self.viewModel?.prayers.first(where: { $0.name == prayerName }) {
+                    self.viewModel?.togglePrayerStatus(for: prayerToUpdate, to: .completed)
+                    print("Status of \(prayerName) updated to completed.")
+                } else {
+                    print("Failed to access ViewModel from AppDelegate or find prayer named \(prayerName) to update.")
+                }
             }
             
         case UNNotificationDefaultActionIdentifier:
@@ -110,6 +112,8 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     }
     
     // Show notification while app is in foreground
+    // FIX: Removed @nonisolated. The protocol methods are already nonisolated,
+    // and AppDelegate is not an actor, so this modifier is not needed and causes a compiler error.
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         print("🔔 Notification Action: Notification will present in foreground: \(notification.request.content.title)")
         completionHandler([.banner, .sound, .badge])

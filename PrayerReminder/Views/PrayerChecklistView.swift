@@ -15,15 +15,16 @@ struct PrayerChecklistView: View {
     let statusLabel: (Prayer) -> String
     let togglePrayerStatus: (Prayer, PrayerStatus) -> Void
     let hasPrayerWindowEnded: (Prayer) -> Bool
-    let isDay: Bool // NEW: Receive isDay from ViewModel
+    let isDay: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Label(LocalizedStringKey("Today's Prayers"), systemImage: "checklist")
                 .font(.title2.bold())
                 .padding(.bottom, 4)
-                .foregroundColor(isDay ? .primary : .white.opacity(0.9)) // Adjust title color
+                .foregroundColor(isDay ? .primary : .white.opacity(0.9))
 
+            // FIX: Ensure all PrayerListCell calls use the correct parameters
             ForEach(prayers) { prayer in
                 if prayer.name == "Sunrise" {
                     if let fajr = prayers.first(where: { $0.name == "Fajr" }), fajr.status == .completed {
@@ -36,7 +37,7 @@ struct PrayerChecklistView: View {
                             statusLabel: statusLabel,
                             togglePrayerStatus: togglePrayerStatus,
                             hasPrayerWindowEnded: hasPrayerWindowEnded,
-                            isDay: isDay // Pass isDay
+                            isDay: isDay
                         )
                     }
                 } else {
@@ -49,7 +50,7 @@ struct PrayerChecklistView: View {
                         statusLabel: statusLabel,
                         togglePrayerStatus: togglePrayerStatus,
                         hasPrayerWindowEnded: hasPrayerWindowEnded,
-                        isDay: isDay // Pass isDay
+                        isDay: isDay
                     )
                 }
             }

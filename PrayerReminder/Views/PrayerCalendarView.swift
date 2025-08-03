@@ -30,6 +30,21 @@ struct PrayerCalendarView: View {
         calendar.shortWeekdaySymbols
     }
 
+    private var datesInMonth: [Date?] {
+        let range = calendar.range(of: .day, in: .month, for: selectedMonth)!
+        let firstDayOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: selectedMonth))!
+        let firstWeekday = calendar.component(.weekday, from: firstDayOfMonth)
+        
+        var dates: [Date?] = Array(repeating: nil, count: firstWeekday - calendar.firstWeekday)
+        
+        for day in 1...range.count {
+            if let date = calendar.date(from: DateComponents(year: calendar.component(.year, from: selectedMonth), month: calendar.component(.month, from: selectedMonth), day: day)) {
+                dates.append(date)
+            }
+        }
+        return dates
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 15) {
             Text(LocalizedStringKey("Prayer History Calendar"))
@@ -48,8 +63,7 @@ struct PrayerCalendarView: View {
                 Spacer()
                 Text(dateFormatter.string(from: selectedMonth))
                     .font(.subheadline.bold())
-                    // FIX: Adjusted month/year color for better clarity
-                    .foregroundColor(isDay ? Color.blue.opacity(0.8) : .white.opacity(0.9)) // Matches titles
+                    .foregroundColor(isDay ? .primary : .white)
                 Spacer()
                 Button(action: {
                     changeMonth(by: 1)
@@ -60,69 +74,39 @@ struct PrayerCalendarView: View {
                 }
             }
             .padding(.horizontal)
-
-            HStack {
-                ForEach(weekdaySymbols, id: \.self) { symbol in
-                    Text(symbol)
-                        .font(.caption)
-                        .frame(maxWidth: .infinity)
-                        // FIX: Adjusted weekday symbol color for better clarity
-                        .foregroundColor(isDay ? .black.opacity(0.7) : .white.opacity(0.8)) // Darker for day, more visible for night
-                }
-            }
-            .padding(.horizontal)
-
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 5) {
-                ForEach(daysInMonth(), id: \.self) { date in
-                    if let date = date {
-                        DayCell(date: date, isDay: isDay, isCompleted: viewModel.checkIfAllPrayersCompleted(for: date))
-                    } else {
-                        Text("")
-                            .frame(maxWidth: .infinity, minHeight: 40)
+            
+            VStack(spacing: 5) {
+                HStack(spacing: 0) {
+                    ForEach(weekdaySymbols, id: \.self) { symbol in
+                        Text(symbol)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .frame(maxWidth: .infinity)
                     }
                 }
-            }
-            .padding(.horizontal)
-        }
-        .padding()
-        .background(
-            Group {
-                if isDay {
-                    Color.white.opacity(0.8)
-                } else {
-                    LinearGradient(gradient: Gradient(colors: [Color.gray.opacity(0.1), Color.black.opacity(0.2)]), startPoint: .topLeading, endPoint: .bottomTrailing)
+                .padding(.horizontal)
+
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 5) {
+                    // FIX: Using the Date as the ID for the ForEach loop to ensure uniqueness.
+                    ForEach(datesInMonth.compactMap { $0 }, id: \.self) { date in
+                        DayCell(
+                            date: date,
+                            isCompleted: viewModel.checkIfAllPrayersCompleted(for: date),
+                            isDay: isDay
+                        )
+                    }
                 }
+                .padding(.horizontal)
             }
-        )
+        }
+        .padding(.vertical)
+        .background(isDay ? Color.white.opacity(0.8) : Color.gray.opacity(0.1))
         .cornerRadius(15)
-        .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 3)
         .padding(.horizontal)
     }
 
-    private func daysInMonth() -> [Date?] {
-        var days: [Date?] = []
-        guard let firstDayOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: selectedMonth)) else {
-            return days
-        }
-        
-        let weekdayOfFirstDay = calendar.component(.weekday, from: firstDayOfMonth)
-        let numberOfEmptyLeadingDays = (weekdayOfFirstDay - calendar.firstWeekday + 7) % 7
-
-        for _ in 0..<numberOfEmptyLeadingDays {
-            days.append(nil)
-        }
-
-        guard let range = calendar.range(of: .day, in: .month, for: firstDayOfMonth) else { return days }
-        for i in 0..<range.count {
-            if let date = calendar.date(byAdding: .day, value: i, to: firstDayOfMonth) {
-                days.append(date)
-            }
-        }
-        return days
-    }
-
-    private func changeMonth(by value: Int) {
-        if let newMonth = calendar.date(byAdding: .month, value: value, to: selectedMonth) {
+    private func changeMonth(by months: Int) {
+        if let newMonth = calendar.date(byAdding: .month, value: months, to: selectedMonth) {
             selectedMonth = newMonth
         }
     }
@@ -130,8 +114,8 @@ struct PrayerCalendarView: View {
 
 struct DayCell: View {
     let date: Date
-    let isDay: Bool
     let isCompleted: Bool
+    let isDay: Bool
     
     private let calendar = Calendar.current
     private let dayFormatter: DateFormatter = {
@@ -174,7 +158,7 @@ struct DayCell: View {
     ZStack {
         LinearGradient(gradient: Gradient(colors: [Color.blue.opacity(0.7), Color.purple.opacity(0.5)]), startPoint: .top, endPoint: .bottom)
             .ignoresSafeArea()
-        PrayerCalendarView(isDay: false)
+        PrayerCalendarView(isDay: true)
             .environmentObject(PrayerReminderViewModel())
     }
 }

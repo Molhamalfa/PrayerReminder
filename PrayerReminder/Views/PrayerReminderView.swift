@@ -35,68 +35,8 @@ struct PrayerReminderView: View {
                             Spacer()
                             LoadingView(title: NSLocalizedString("Loading...", comment: "Loading indicator message"))
                             Spacer()
-                        } else if viewModel.loadingFailed {
-                            Spacer()
-                            VStack(spacing: 10) {
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .font(.largeTitle)
-                                    .foregroundColor(.red)
-                                Text(NSLocalizedString("Failed to load prayer times.", comment: "Error message for loading failure"))
-                                    .font(.headline)
-                                    .foregroundColor(.red)
-                                Text(NSLocalizedString("Please check your internet connection and location permissions.", comment: "Troubleshooting tip"))
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                Button(action: {
-                                    viewModel.requestLocation()
-                                }) {
-                                    Text(NSLocalizedString("Try Again", comment: "Button to retry loading"))
-                                        .padding(.vertical, 8)
-                                        .padding(.horizontal, 15)
-                                        .background(Color.blue)
-                                        .foregroundColor(.white)
-                                        .cornerRadius(8)
-                                }
-                            }
-                            .padding()
-                            .background(Color.white.opacity(0.9))
-                            .cornerRadius(15)
-                            .shadow(radius: 5)
-                            .padding(.horizontal, 20)
-                            Spacer()
-                        }
-                        else if viewModel.prayers.isEmpty {
-                            Spacer()
-                            VStack(spacing: 10) {
-                                Image(systemName: "info.circle.fill")
-                                    .font(.largeTitle)
-                                    .foregroundColor(.blue)
-                                Text(NSLocalizedString("No prayer data available.", comment: "Message when prayers array is empty"))
-                                    .font(.headline)
-                                    .foregroundColor(.primary)
-                                Text(LocalizedStringKey("Ensure location services are enabled and try refreshing."))
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                Button(action: {
-                                    viewModel.requestLocation()
-                                }) {
-                                    Text(LocalizedStringKey("Fetch Data"))
-                                        .padding(.vertical, 8)
-                                        .padding(.horizontal, 15)
-                                        .background(Color.blue)
-                                        .foregroundColor(.white)
-                                        .cornerRadius(8)
-                                }
-                            }
-                            .padding()
-                            .background(Color.white.opacity(0.9))
-                            .cornerRadius(15)
-                            .shadow(radius: 5)
-                            .padding(.horizontal, 20)
-                            Spacer()
-                        }
-                        else {
-                            VStack(spacing: 20) { // This VStack contains the widgets
+                        } else {
+                            VStack(spacing: 20) {
                                 NextPrayerTimerView(
                                     currentActivePrayer: viewModel.currentActivePrayer,
                                     nextPrayerName: viewModel.nextPrayerName,

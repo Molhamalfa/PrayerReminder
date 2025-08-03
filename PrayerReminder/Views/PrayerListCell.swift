@@ -16,7 +16,7 @@ struct PrayerListCell: View {
     let statusLabel: (Prayer) -> String
     let togglePrayerStatus: (Prayer, PrayerStatus) -> Void
     let hasPrayerWindowEnded: (Prayer) -> Bool
-    let isDay: Bool // NEW: Receive isDay from ViewModel
+    let isDay: Bool
 
     var body: some View {
         let isActive = isPrayerCurrentlyActive(prayer)
@@ -28,11 +28,11 @@ struct PrayerListCell: View {
                     .foregroundColor(statusColor(prayer))
                 Text(prayer.name)
                     .font(.headline)
-                    .foregroundColor(isDay ? .primary : .white.opacity(0.9)) // Adjust text color
+                    .foregroundColor(isDay ? .primary : .white.opacity(0.9))
                 Spacer()
                 Text(prayer.time)
                     .font(.subheadline)
-                    .foregroundColor(isDay ? .gray : .white.opacity(0.7)) // Adjust text color
+                    .foregroundColor(isDay ? .gray : .white.opacity(0.7))
                 Text(statusLabel(prayer))
                     .foregroundColor(statusColor(prayer))
                     .font(.subheadline)
@@ -48,13 +48,12 @@ struct PrayerListCell: View {
                             .background(Color.green.opacity(0.2))
                             .cornerRadius(8)
                     }
-                    .disabled(!isActive || isMissed) // Disable if not active or already missed
+                    .disabled(!isActive || isMissed || hasPrayerWindowEnded(prayer))
                 }
                 .font(.caption)
             }
         }
         .padding()
-        // FIX: Conditional background for day/night
         .background(
             Group {
                 if isDay {
