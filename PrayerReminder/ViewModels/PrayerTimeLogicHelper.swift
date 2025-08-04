@@ -39,102 +39,67 @@ class PrayerTimeLogicHelper {
         return Date() > prayerDate
     }
     
-    // Determines which prayer is currently in its active window.
-    func isPrayerCurrentlyActive(_ prayer: Prayer, allPrayers: [Prayer]) -> Bool {
-        guard prayer.name != "Sunrise" else { return false }
-        
+    // Determines if a prayer is currently active (within its prayer time window).
+    func isPrayerCurrentlyActive(for prayer: Prayer, allPrayers: [Prayer]) -> Bool {
         guard let prayerDate = date(for: prayer.time, basedOn: Date()) else { return false }
-        
-        // Find the next prayer in the list to determine the end of the current prayer's window.
-        guard let nextPrayer = allPrayers.first(where: { $0.name != "Sunrise" && date(for: $0.time, basedOn: Date())! > prayerDate }) else {
-            // This is the last prayer of the day (Isha). The window ends at midnight.
-            return Date() >= prayerDate && Date() < date(for: "23:59", basedOn: Date())!
-        }
-        
-        guard let nextPrayerDate = date(for: nextPrayer.time, basedOn: Date()) else { return false }
-
         let now = Date()
-        return now >= prayerDate && now < nextPrayerDate
+
+        // The prayer is active if the current time is between its start time and the start time of the next prayer.
+        if let nextPrayer = getPrayerAfter(prayer, from: allPrayers),
+           let nextPrayerDate = date(for: nextPrayer.time, basedOn: now) {
+            return now >= prayerDate && now < nextPrayerDate
+        } else {
+            // If it's the last prayer of the day (Isha), the window ends at midnight.
+            return now >= prayerDate
+        }
+    }
+
+    // Determines if a prayer's window for completion has ended.
+    // It's considered ended if the next prayer's time has been reached.
+    func hasPrayerWindowEnded(for prayer: Prayer, allPrayers: [Prayer]) -> Bool {
+        guard let nextPrayer = getPrayerAfter(prayer, from: allPrayers),
+              let nextPrayerDate = date(for: nextPrayer.time, basedOn: Date()) else {
+            // If there's no next prayer (e.g., it's Isha), the window effectively ends at midnight.
+            return false
+        }
+        return Date() > nextPrayerDate
     }
     
-    // Checks if the prayer's active window has ended.
-    func hasPrayerWindowEnded(for prayer: Prayer, allPrayers: [Prayer]) -> Bool {
-        guard prayer.name != "Sunrise" else { return false }
-        
-        guard let prayerDate = date(for: prayer.time, basedOn: Date()) else { return false }
-        
-        // Find the next prayer to determine the end of the current prayer's window.
-        guard let nextPrayer = allPrayers.first(where: { $0.name != "Sunrise" && date(for: $0.time, basedOn: Date())! > prayerDate }) else {
-            // For the last prayer (Isha), the window ends at midnight.
-            return Date() >= prayerDate && Date() > date(for: "23:59", basedOn: Date())!
-        }
-        
-        guard let nextPrayerDate = date(for: nextPrayer.time, basedOn: Date()) else { return false }
-        
-        let now = Date()
-        return now > nextPrayerDate
-    }
-
-    // Finds the next prayer that has not yet occurred.
-    // This function will wrap around to the next day's Fajr if all prayers today have passed.
-    func findNextPrayer(from prayers: [Prayer], now: Date = Date()) -> (prayer: Prayer, time: Date)? {
-        let sortedPrayers = prayers.sorted { p1, p2 in
-            guard let date1 = date(for: p1.time, basedOn: now),
-                  let date2 = date(for: p2.time, basedOn: now) else { return false }
-            return date1 < date2
-        }
-
-        for prayer in sortedPrayers {
-            guard let prayerDate = date(for: prayer.time, basedOn: now) else { continue }
-            
-            // Only consider prayers whose time is after the current time.
-            if now < prayerDate {
-                return (prayer, prayerDate)
-            }
-        }
-
-        // If no upcoming prayer is found today, the next prayer is Fajr tomorrow.
-        if let fajr = prayers.first(where: { $0.name == "Fajr" }),
-           let fajrToday = date(for: fajr.time, basedOn: now) {
-            if let fajrTomorrow = Calendar.current.date(byAdding: .day, value: 1, to: fajrToday) {
-                return (fajr, fajrTomorrow)
+    // Finds the next prayer after the given prayer in the list.
+    func getPrayerAfter(_ prayer: Prayer, from prayers: [Prayer]) -> Prayer? {
+        if let currentIndex = prayers.firstIndex(where: { $0.id == prayer.id }) {
+            let nextIndex = currentIndex + 1
+            if prayers.indices.contains(nextIndex) {
+                return prayers[nextIndex]
             }
         }
         return nil
     }
-    
-    // Finds the prayer that is currently active.
-    func findActivePrayer(from prayers: [Prayer], now: Date = Date()) -> Prayer? {
-        let sortedPrayers = prayers.sorted { p1, p2 in
-            guard let date1 = date(for: p1.time, basedOn: now),
-                  let date2 = date(for: p2.time, basedOn: now) else { return false }
-            return date1 < date2
-        }
-        
-        // The active prayer is the one whose time has passed, but the next prayer's time has not.
-        for (index, prayer) in sortedPrayers.enumerated() {
-            guard prayer.name != "Sunrise" else { continue }
-            guard let prayerDate = date(for: prayer.time, basedOn: now) else { continue }
-            
-            // If the current time is after this prayer's time...
-            if now >= prayerDate {
-                // ...and this is the last prayer (Isha), it's active until midnight.
-                if index == sortedPrayers.count - 1 {
-                    return prayer
-                }
-                
-                // ...or if the current time is before the next prayer's time, this is the active prayer.
-                if let nextPrayer = sortedPrayers[safe: index + 1],
-                   let nextPrayerDate = date(for: nextPrayer.time, basedOn: now) {
-                    if now < nextPrayerDate {
-                        return prayer
+
+    // Retrieves the next prayer that is marked as `.upcoming`, along with its `Date` object.
+    func getNextUpcomingPrayer(from prayers: [Prayer], after currentTime: Date = Date()) -> (prayer: Prayer, prayerDate: Date)? {
+        for prayer in prayers {
+            if prayer.status == .upcoming {
+                if let prayerDate = date(for: prayer.time, basedOn: currentTime) {
+                    if currentTime < prayerDate {
+                        return (prayer, prayerDate)
                     }
                 }
             }
         }
-        return nil
+        
+        // If all prayers have passed for the day, return the first prayer of the next day
+        // This is a simplified approach, a more robust solution would involve fetching data for the next day
+        guard let firstPrayer = prayers.first else { return nil }
+        
+        if let prayerDate = date(for: firstPrayer.time, basedOn: currentTime) {
+            return (firstPrayer, prayerDate)
+        }
+        
+        // If all prayers have passed, default to the first prayer of the current list.
+        return prayers.first.map { ($0, date(for: $0.time, basedOn: currentTime)!) }
     }
-
+    
     // Formats a time interval into a user-friendly string (e.g., "02h 30m").
     func format(timeInterval: TimeInterval) -> String {
         let absoluteInterval = abs(timeInterval)
@@ -168,6 +133,7 @@ class PrayerTimeLogicHelper {
 // Simple extension for safe array access
 extension Array {
     subscript(safe index: Int) -> Element? {
-        return indices.contains(index) ? self[index] : nil
+        guard index >= 0, index < endIndex else { return nil }
+        return self[index]
     }
 }

@@ -38,8 +38,19 @@ class PrayerDataStore {
             print("❌ DataStore: Failed to encode prayer history: \(error)")
         }
     }
-    
-    // NEW: Loads saved prayers for today from UserDefaults
+
+    // NEW: Function to save the entire historical data array
+    func saveAllPrayerData(_ history: [SavedPrayerData]) {
+        do {
+            let encoded = try JSONEncoder().encode(history)
+            UserDefaults.standard.set(encoded, forKey: allSavedPrayersKey)
+            print("✅ DataStore: Saved entire historical prayer data array to UserDefaults. Total days: \(history.count)")
+        } catch {
+            print("❌ DataStore: Failed to encode and save historical prayer data array: \(error)")
+        }
+    }
+
+    // Loads prayers for the current day from UserDefaults
     func loadSavedPrayersForToday() -> SavedPrayerData? {
         let todayString = DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .none)
         if let history = loadAllSavedPrayerData(),

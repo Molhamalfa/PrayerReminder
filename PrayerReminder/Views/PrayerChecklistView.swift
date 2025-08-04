@@ -26,33 +26,19 @@ struct PrayerChecklistView: View {
 
             // FIX: Ensure all PrayerListCell calls use the correct parameters
             ForEach(prayers) { prayer in
-                if prayer.name == "Sunrise" {
-                    if let fajr = prayers.first(where: { $0.name == "Fajr" }), fajr.status == .completed {
-                        PrayerListCell(
-                            prayer: prayer,
-                            hasPrayerTimePassed: hasPrayerTimePassed,
-                            isPrayerCurrentlyActive: isPrayerCurrentlyActive,
-                            statusIcon: statusIcon,
-                            statusColor: statusColor,
-                            statusLabel: statusLabel,
-                            togglePrayerStatus: togglePrayerStatus,
-                            hasPrayerWindowEnded: hasPrayerWindowEnded,
-                            isDay: isDay
-                        )
-                    }
-                } else {
-                    PrayerListCell(
-                        prayer: prayer,
-                        hasPrayerTimePassed: hasPrayerTimePassed,
-                        isPrayerCurrentlyActive: isPrayerCurrentlyActive,
-                        statusIcon: statusIcon,
-                        statusColor: statusColor,
-                        statusLabel: statusLabel,
-                        togglePrayerStatus: togglePrayerStatus,
-                        hasPrayerWindowEnded: hasPrayerWindowEnded,
-                        isDay: isDay
-                    )
-                }
+                // The PrayerListCell itself handles the display logic for "Sunrise" and the "Prayed" button.
+                // We no longer need this complex conditional check here.
+                PrayerListCell(
+                    prayer: prayer,
+                    hasPrayerTimePassed: hasPrayerTimePassed,
+                    isPrayerCurrentlyActive: isPrayerCurrentlyActive,
+                    statusIcon: statusIcon,
+                    statusColor: statusColor,
+                    statusLabel: statusLabel,
+                    togglePrayerStatus: togglePrayerStatus,
+                    hasPrayerWindowEnded: hasPrayerWindowEnded,
+                    isDay: isDay
+                )
             }
         }
         .padding()
