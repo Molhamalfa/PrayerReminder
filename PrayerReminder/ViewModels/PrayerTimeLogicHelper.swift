@@ -44,22 +44,20 @@ class PrayerTimeLogicHelper {
         guard let prayerDate = date(for: prayer.time, basedOn: Date()) else { return false }
         let now = Date()
 
-        // The prayer is active if the current time is between its start time and the start time of the next prayer.
         if let nextPrayer = getPrayerAfter(prayer, from: allPrayers),
            let nextPrayerDate = date(for: nextPrayer.time, basedOn: now) {
             return now >= prayerDate && now < nextPrayerDate
         } else {
-            // If it's the last prayer of the day (Isha), the window ends at midnight.
+            // If it's the last prayer of the day (Isha), the window is active until midnight.
             return now >= prayerDate
         }
     }
 
     // Determines if a prayer's window for completion has ended.
-    // It's considered ended if the next prayer's time has been reached.
     func hasPrayerWindowEnded(for prayer: Prayer, allPrayers: [Prayer]) -> Bool {
         guard let nextPrayer = getPrayerAfter(prayer, from: allPrayers),
               let nextPrayerDate = date(for: nextPrayer.time, basedOn: Date()) else {
-            // If there's no next prayer (e.g., it's Isha), the window effectively ends at midnight.
+            // No next prayer means it's Isha. Its window hasn't ended until the day is over.
             return false
         }
         return Date() > nextPrayerDate
@@ -75,33 +73,51 @@ class PrayerTimeLogicHelper {
         }
         return nil
     }
+    
+    /// NEW: Creates pairs of (Current Prayer, Next Prayer) to define prayer windows.
+    /// This is used for scheduling repeating reminders.
+    func getPrayerWindows(from prayers: [Prayer]) -> [(current: Prayer, next: Prayer)] {
+        // Filter out "Sunrise" as it does not have a prayer window for reminders.
+        let relevantPrayers = prayers.filter { $0.name != "Sunrise" }
+        guard !relevantPrayers.isEmpty else { return [] }
+        
+        var windows: [(current: Prayer, next: Prayer)] = []
+        // Iterate up to the second-to-last prayer to create pairs.
+        for i in 0..<(relevantPrayers.count - 1) {
+            windows.append((current: relevantPrayers[i], next: relevantPrayers[i+1]))
+        }
+        return windows
+    }
 
-    // Retrieves the next prayer that is marked as `.upcoming`, along with its `Date` object.
+    /// Retrieves the next prayer that is marked as `.upcoming`, along with its `Date` object.
     func getNextUpcomingPrayer(from prayers: [Prayer], after currentTime: Date = Date()) -> (prayer: Prayer, prayerDate: Date)? {
-        for prayer in prayers {
-            if prayer.status == .upcoming {
-                if let prayerDate = date(for: prayer.time, basedOn: currentTime) {
-                    if currentTime < prayerDate {
-                        return (prayer, prayerDate)
-                    }
-                }
+        let upcomingToday = prayers
+            .filter { $0.status == .upcoming }
+            .compactMap { prayer -> (Prayer, Date)? in
+                guard let prayerDate = date(for: prayer.time, basedOn: currentTime) else { return nil }
+                return (prayer, prayerDate)
             }
+            .first { $0.1 > currentTime }
+
+        if let nextPrayerToday = upcomingToday {
+            return nextPrayerToday
         }
         
-        // If all prayers have passed for the day, return the first prayer of the next day
-        // This is a simplified approach, a more robust solution would involve fetching data for the next day
-        guard let firstPrayer = prayers.first else { return nil }
-        
-        if let prayerDate = date(for: firstPrayer.time, basedOn: currentTime) {
-            return (firstPrayer, prayerDate)
+        guard let firstPrayerOfList = prayers.first,
+              let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: currentTime),
+              let firstPrayerTomorrowDate = date(for: firstPrayerOfList.time, basedOn: tomorrow) else {
+            return nil
         }
         
-        // If all prayers have passed, default to the first prayer of the current list.
-        return prayers.first.map { ($0, date(for: $0.time, basedOn: currentTime)!) }
+        var nextDayPrayer = firstPrayerOfList
+        nextDayPrayer.status = .upcoming
+        
+        return (nextDayPrayer, firstPrayerTomorrowDate)
     }
     
     // Formats a time interval into a user-friendly string (e.g., "02h 30m").
     func format(timeInterval: TimeInterval) -> String {
+        guard timeInterval > 0 else { return "00m" }
         let absoluteInterval = abs(timeInterval)
         let hours = Int(absoluteInterval) / 3600
         let minutes = Int(absoluteInterval) % 3600 / 60
@@ -115,9 +131,9 @@ class PrayerTimeLogicHelper {
 
     // Determines if it's currently daytime based on Fajr and Maghrib prayer times.
     func isDaytime(prayers: [Prayer], currentTime: Date = Date()) -> Bool {
-        guard let fajr = prayers.first(where: { $0.name == "Fajr" }),
+        guard !prayers.isEmpty,
+              let fajr = prayers.first(where: { $0.name == "Fajr" }),
               let maghrib = prayers.first(where: { $0.name == "Maghrib" }) else {
-            // Default to true if prayers are not available.
             return true
         }
 

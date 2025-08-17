@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import CoreLocation // For CLLocationCoordinate2D
+import CoreLocation
 
 enum APIError: Error, LocalizedError {
     case invalidURL
@@ -32,7 +32,14 @@ enum APIError: Error, LocalizedError {
 }
 
 class AladhanAPIService {
-    func fetchPrayerTimes(latitude: Double, longitude: Double, method: Int) async throws -> [Prayer] {
+    /// Fetches prayer times from the Aladhan API and correctly sets their initial status.
+    /// - Parameters:
+    ///   - latitude: The user's latitude.
+    ///   - longitude: The user's longitude.
+    ///   - method: The calculation method for prayer times.
+    ///   - timeHelper: An instance of `PrayerTimeLogicHelper` to determine the initial status of prayers.
+    /// - Returns: An array of `Prayer` objects with their correct initial status (`.upcoming` or `.missed`).
+    func fetchPrayerTimes(latitude: Double, longitude: Double, method: Int, using timeHelper: PrayerTimeLogicHelper) async throws -> [Prayer] {
         let urlString = "https://api.aladhan.com/v1/timingsByAddress?address=\(latitude),\(longitude)&method=\(method)"
         
         guard let url = URL(string: urlString) else {
@@ -44,8 +51,6 @@ class AladhanAPIService {
 
             guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
                 let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 0
-                print("API Response Status Code: \(statusCode)")
-                // Attempt to decode error response if available
                 if let apiResponse = try? JSONDecoder().decode(AladhanResponse.self, from: data) {
                     throw APIError.apiError(code: apiResponse.code, status: apiResponse.status)
                 } else {
@@ -59,7 +64,8 @@ class AladhanAPIService {
                 throw APIError.noData
             }
 
-            let prayers = [
+            // Create a temporary list of prayers, all defaulting to .upcoming.
+            let initialPrayers = [
                 Prayer(name: "Fajr", time: timings.Fajr, status: .upcoming),
                 Prayer(name: "Sunrise", time: timings.Sunrise, status: .upcoming),
                 Prayer(name: "Dhuhr", time: timings.Dhuhr, status: .upcoming),
@@ -68,20 +74,31 @@ class AladhanAPIService {
                 Prayer(name: "Isha", time: timings.Isha, status: .upcoming)
             ]
             
-            return prayers
+            // CORRECTED: Map over the initial list and use the time helper to set the
+            // correct status for each prayer *before* returning the data.
+            // This prevents the race condition and rapid UI updates.
+            let prayersWithCorrectStatus = initialPrayers.map { prayer -> Prayer in
+                var correctedPrayer = prayer
+                // If the prayer's window has already ended today, mark it as missed from the start.
+                if timeHelper.hasPrayerWindowEnded(for: prayer, allPrayers: initialPrayers) {
+                    correctedPrayer.status = .missed
+                }
+                return correctedPrayer
+            }
+            
+            return prayersWithCorrectStatus
 
         } catch let decodingError as DecodingError {
             throw APIError.decodingError(decodingError)
         } catch let urlError as URLError {
             throw APIError.networkError(urlError)
         } catch {
-            throw APIError.networkError(error) // Catch any other unexpected errors
+            throw APIError.networkError(error)
         }
     }
 }
 
-// MARK: - API Response Model (Moved here for AladhanAPIService)
-// Aladhan API response structure
+// MARK: - API Response Model
 struct AladhanResponse: Codable {
     let code: Int
     let status: String

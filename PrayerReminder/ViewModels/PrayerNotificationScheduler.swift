@@ -5,7 +5,6 @@
 //  Created by Mac on 25.07.2025.
 //
 
-
 import Foundation
 import UserNotifications
 
@@ -14,7 +13,8 @@ class PrayerNotificationScheduler {
     
     static let prayedActionIdentifier = "PRAYED_ACTION"
     static let prayerCategoryIdentifier = "PRAYER_REMINDER_CATEGORY"
-    private let prayerNotificationIdentifierPrefix = "prayer-reminder-"
+    // A unique prefix for all main prayer time notifications.
+    private let mainNotificationIdentifierPrefix = "main-prayer-reminder-"
 
     private init() {}
 
@@ -36,10 +36,10 @@ class PrayerNotificationScheduler {
         print("✅ Notification category '\(PrayerNotificationScheduler.prayerCategoryIdentifier)' registered.")
     }
 
+    /// Schedules the main, one-time notification for each upcoming prayer.
     func scheduleNotifications(for prayers: [Prayer]) {
-        UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
-        
         for prayer in prayers {
+            // Only schedule for prayers that haven't been completed or missed.
             guard prayer.status == .upcoming else { continue }
             
             guard let date = getDate(from: prayer.time) else {
@@ -57,58 +57,31 @@ class PrayerNotificationScheduler {
             let components = Calendar.current.dateComponents([.hour, .minute], from: date)
             let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
             
-            let identifier = "\(prayerNotificationIdentifierPrefix)\(prayer.name)"
+            let identifier = "\(mainNotificationIdentifierPrefix)\(prayer.name)"
             let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
             
             UNUserNotificationCenter.current().add(request) { error in
                 if let error = error {
-                    print("❌ Error scheduling notification for \(prayer.name): \(error.localizedDescription)")
+                    print("❌ Error scheduling main notification for \(prayer.name): \(error.localizedDescription)")
                 } else {
-                    print("✅ Successfully scheduled notification for \(prayer.name) at \(prayer.time) with ID: \(identifier)")
+                    print("✅ Successfully scheduled main notification for \(prayer.name) at \(prayer.time)")
                 }
             }
         }
-        
-        // For debugging, print all pending notifications after scheduling
-        printPendingNotifications()
     }
 
-    func stopAllPrayerNotifications() {
-        UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
-        print("🗑️ All pending prayer notifications removed.")
+    /// Removes the main pending notification for a specific prayer.
+    func removePendingNotifications(for prayer: Prayer) {
+        let identifier = "\(mainNotificationIdentifierPrefix)\(prayer.name)"
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [identifier])
+        print("🗑️ Removed main notification for \(prayer.name).")
     }
     
-    // NEW: Function to remove notifications for a specific prayer
-    func removePendingNotifications(for prayer: Prayer) {
-        let identifier = "\(prayerNotificationIdentifierPrefix)\(prayer.name)"
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [identifier])
-        print("🗑️ Removed notification with identifier: \(identifier)")
-    }
-
-    func printPendingNotifications() {
-        UNUserNotificationCenter.current().getPendingNotificationRequests { requests in
-            print("\n--- Pending Notification Requests (\(requests.count)) ---")
-            if requests.isEmpty {
-                print("No pending notifications.")
-            } else {
-                for request in requests {
-                    print("  ID: \(request.identifier)")
-                    print("  Title: \(request.content.title)")
-                    print("  Body: \(request.content.body)")
-                    if let calendarTrigger = request.trigger as? UNCalendarNotificationTrigger {
-                        let hour = calendarTrigger.dateComponents.hour ?? 0
-                        let minute = calendarTrigger.dateComponents.minute ?? 0
-                        print(String(format: "  Trigger Time: %02d:%02d (repeats: %@)", hour, minute, calendarTrigger.repeats ? "true" : "false" as NSString))
-                    } else if let timeIntervalTrigger = request.trigger as? UNTimeIntervalNotificationTrigger {
-                        print(String(format: "  Trigger Interval: %.0f seconds (repeats: %@)", timeIntervalTrigger.timeInterval, timeIntervalTrigger.repeats ? "true" : "false" as NSString))
-                    } else {
-                        print("  Trigger Type: Unknown")
-                    }
-                    print("---------------------------------------")
-                }
-            }
-            print("-----------------------------------\n")
-        }
+    /// Cancels ALL scheduled notifications (both main and repeating).
+    /// This is used to clear everything before a full refresh.
+    func cancelAllNotifications() {
+        UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
+        print("🗑️ All pending notifications have been cancelled.")
     }
 
     private func getDate(from timeString: String) -> Date? {

@@ -4,12 +4,6 @@
 //
 //  Created by Mac on 25.07.2025.
 //
-//
-//  SettingsView.swift
-//  PrayerReminder
-//
-//  Created by Mac on 25.07.2025.
-//
 
 import SwiftUI
 
@@ -27,7 +21,8 @@ struct SettingsView: View {
             Section(header: Text(LocalizedStringKey("Reminders"))) {
                 Toggle(LocalizedStringKey("Enable Prayer Reminders"), isOn: $reminderEnabled)
                     .onChange(of: reminderEnabled) { oldValue, newValue in
-                        viewModel.handleReminderRepeats()
+                        // CORRECTED: Call the new, correct function name.
+                        viewModel.handleReminderSettingsChange()
                     }
 
                 if reminderEnabled {
@@ -41,7 +36,8 @@ struct SettingsView: View {
                     }
                     .pickerStyle(.menu)
                     .onChange(of: userReminderIntervalInMinutes) { oldValue, newValue in
-                        viewModel.handleReminderRepeats()
+                        // CORRECTED: Call the new, correct function name.
+                        viewModel.handleReminderSettingsChange()
                     }
                 }
             }
