@@ -11,41 +11,32 @@ import CoreLocation
 import UserNotifications
 
 @MainActor
-class PrayerReminderViewModel: NSObject, ObservableObject, CLLocationManagerDelegate, UNUserNotificationCenterDelegate, Identifiable {
+class PrayerReminderViewModel: NSObject, ObservableObject, UNUserNotificationCenterDelegate, Identifiable {
     // MARK: - AppStorage Properties
     @AppStorage("userReminderIntervalInMinutes") private var userReminderIntervalInMinutes: Int = 10
     @AppStorage("reminderEnabled") private var reminderEnabled: Bool = true
     @AppStorage("selectedLanguageCode") private var selectedLanguageCode: String = "en"
-    // REMOVED: The manual calculation method is no longer needed.
-    // @AppStorage("selectedCalculationMethod") private var selectedCalculationMethod: Int = 12
     @AppStorage("lastFetchedDate") private var lastFetchedDate: String = ""
 
     // MARK: - Published Properties for UI
     @Published var isLoading = true
     @Published var loadingFailed = false
+    @Published var errorMessage: String? = nil // UPDATED: For specific error messages
     @Published var isLanguageChanging = false
     @Published var refreshID = UUID()
     @Published var prayers: [Prayer] = []
     @Published var historicalPrayerData: [SavedPrayerData] = []
-
     @Published var lastFetchedLatitude: CLLocationDegrees?
     @Published var lastFetchedLongitude: CLLocationDegrees?
-    
-    @Published var isDay: Bool = true {
-        didSet {
-            print("🌓 ViewModel: isDay didSet: \(isDay ? "Day" : "Night")")
-        }
-    }
-    
+    @Published var isDay: Bool = true
     @Published var nextPrayerName: String = ""
     @Published var timeUntilNextPrayer: String = ""
 
     // MARK: - Private Properties
     private let dataStore = CloudKitDataStore()
     private let timeLogicHelper = PrayerTimeLogicHelper()
-    private let locationManager = CLLocationManager()
+    private let locationService = LocationService() // UPDATED: Use the new service
     private let apiService = AladhanAPIService()
-    
     private var cancellables = Set<AnyCancellable>()
     private var isSaving = false
 
@@ -53,8 +44,7 @@ class PrayerReminderViewModel: NSObject, ObservableObject, CLLocationManagerDele
     override init() {
         super.init()
         setupNotificationDelegate()
-        setupLocationManager()
-        
+        setupLocationSubscriber() // UPDATED: New setup method
         startTimer()
         
         $prayers
@@ -70,17 +60,27 @@ class PrayerReminderViewModel: NSObject, ObservableObject, CLLocationManagerDele
         PrayerNotificationScheduler.shared.registerNotificationCategory()
     }
     
-    private func setupLocationManager() {
-        locationManager.delegate = self
-        locationManager.desiredAccuracy = kCLLocationAccuracyBest
+    // UPDATED: Subscribes to the location service's publisher
+    private func setupLocationSubscriber() {
+        locationService.locationPublisher
+            .sink { [weak self] result in
+                guard let self = self else { return }
+                switch result {
+                case .success(let location):
+                    self.handleLocationUpdate(location)
+                case .failure(let error):
+                    self.handleLocationFailure(error)
+                }
+            }
+            .store(in: &cancellables)
     }
 
     // MARK: - Data Loading and Handling
-    
     func loadInitialData() {
         Task {
             isLoading = true
             loadingFailed = false
+            errorMessage = nil
 
             await loadHistoricalData()
             
@@ -89,10 +89,10 @@ class PrayerReminderViewModel: NSObject, ObservableObject, CLLocationManagerDele
             if let todayData = historicalPrayerData.first(where: { $0.date == todayKey }) {
                 self.prayers = todayData.prayers
                 self.isLoading = false
-                print("✅ ViewModel: Loaded today's prayers from CloudKit cache for key: \(todayKey).")
+                print("✅ ViewModel: Loaded today's prayers from CloudKit cache.")
             } else {
-                print("ℹ️ ViewModel: No data for today in CloudKit for key: \(todayKey). Requesting location...")
-                requestLocation()
+                print("ℹ️ ViewModel: No data for today in cache. Requesting location...")
+                locationService.requestLocationAuthorization()
             }
         }
     }
@@ -103,20 +103,13 @@ class PrayerReminderViewModel: NSObject, ObservableObject, CLLocationManagerDele
     }
 
     private func savePrayersToCloudKit(_ prayersToSave: [Prayer]) {
-        guard !isSaving else {
-            print("☁️ CloudKit: Save operation already in progress. Skipping.")
-            return
-        }
-        guard !prayersToSave.isEmpty else { return }
-        
+        guard !isSaving, !prayersToSave.isEmpty else { return }
         let todayKey = DateFormatter.databaseKeyFormatter.string(from: Date())
         let currentDayData = SavedPrayerData(date: todayKey, prayers: prayersToSave)
         
         isSaving = true
-        
         Task {
             defer { self.isSaving = false }
-            
             do {
                 try await dataStore.save(currentDayData)
                 if let index = self.historicalPrayerData.firstIndex(where: { $0.id == currentDayData.id }) {
@@ -136,100 +129,65 @@ class PrayerReminderViewModel: NSObject, ObservableObject, CLLocationManagerDele
         } catch {
             print("❌ ViewModel: Failed to load historical data from CloudKit: \(error.localizedDescription)")
             self.loadingFailed = true
+            self.errorMessage = error.localizedDescription
             self.isLoading = false
         }
     }
 
-    // MARK: - Location Management
-    func requestLocation() {
-        print("📍 ViewModel: Requesting location authorization.")
-        locationManager.requestWhenInUseAuthorization()
-    }
-    
-    nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        Task { @MainActor in
-            switch manager.authorizationStatus {
-            case .authorizedWhenInUse, .authorizedAlways:
-                print("✅ ViewModel: Location authorization granted. Starting to update location.")
-                manager.startUpdatingLocation()
-            case .denied, .restricted:
-                print("❌ ViewModel: Location access denied or restricted. Using fallback location.")
-                await self.fetchPrayerTimes(latitude: 41.0082, longitude: 28.9784)
-            case .notDetermined:
-                print("⏳ ViewModel: Location authorization not determined.")
-            @unknown default:
-                print("⚠️ ViewModel: Unknown authorization status.")
+    // MARK: - Location Management (UPDATED)
+    private func handleLocationUpdate(_ location: CLLocation) {
+        lastFetchedLatitude = location.coordinate.latitude
+        lastFetchedLongitude = location.coordinate.longitude
+        print("📍 ViewModel: New location received from service.")
+        
+        let todayKey = DateFormatter.databaseKeyFormatter.string(from: Date())
+        if lastFetchedDate != todayKey || self.prayers.isEmpty {
+            Task {
+                await fetchPrayerTimes(latitude: location.coordinate.latitude, longitude: location.coordinate.longitude)
             }
+        } else {
+            isLoading = false
         }
     }
-    
-    nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        Task { @MainActor in
-            guard let location = locations.first else { return }
-            manager.stopUpdatingLocation()
-            
-            self.lastFetchedLatitude = location.coordinate.latitude
-            self.lastFetchedLongitude = location.coordinate.longitude
-            
-            print("📍 ViewModel: New location received. Latitude: \(location.coordinate.latitude), Longitude: \(location.coordinate.longitude)")
-            
-            let todayKey = DateFormatter.databaseKeyFormatter.string(from: Date())
-            if lastFetchedDate != todayKey || self.prayers.isEmpty {
-                await self.fetchPrayerTimes(latitude: location.coordinate.latitude, longitude: location.coordinate.longitude)
-            } else {
-                self.isLoading = false
-            }
-        }
-    }
-    
-    nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        Task { @MainActor in
-            print("❌ ViewModel: Failed to get user location: \(error.localizedDescription)")
-            await self.fetchPrayerTimes(latitude: 41.0082, longitude: 28.9784)
+
+    private func handleLocationFailure(_ error: Error) {
+        print("❌ ViewModel: Location failure from service. Using fallback.")
+        // Use fallback location (e.g., Istanbul)
+        Task {
+            await fetchPrayerTimes(latitude: 41.0082, longitude: 28.9784)
         }
     }
 
     // MARK: - API & Data Fetching
     func fetchPrayerTimes(latitude: Double, longitude: Double) async {
-        // CORRECTED: Log message no longer includes a method.
-        print("🌐 ViewModel: Fetching prayer times for \(latitude), \(longitude) using automatic method detection...")
-        self.isLoading = true
-        self.loadingFailed = false
+        print("🌐 ViewModel: Fetching prayer times...")
+        isLoading = true
+        loadingFailed = false
+        errorMessage = nil
         
         do {
-            // CORRECTED: The call to the API service no longer passes a manual method.
-            let fetchedPrayers = try await apiService.fetchPrayerTimes(
-                latitude: latitude,
-                longitude: longitude,
-                using: self.timeLogicHelper
-            )
-            
+            let fetchedPrayers = try await apiService.fetchPrayerTimes(latitude: latitude, longitude: longitude, using: self.timeLogicHelper)
             let mergedPrayers = self.merge(newPrayers: fetchedPrayers, with: self.prayers)
             self.prayers = mergedPrayers
-            
             self.lastFetchedDate = DateFormatter.databaseKeyFormatter.string(from: Date())
-            self.isLoading = false
-            
-            self.scheduleAllReminders(for: mergedPrayers)
-            
+            isLoading = false
+            scheduleAllReminders(for: mergedPrayers)
             print("✅ ViewModel: Successfully fetched prayer times.")
         } catch {
             print("❌ ViewModel: Failed to fetch prayer times: \(error.localizedDescription)")
-            self.isLoading = false
-            self.loadingFailed = true
+            isLoading = false
+            loadingFailed = true
+            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
         }
     }
     
     private func merge(newPrayers: [Prayer], with existingPrayers: [Prayer]) -> [Prayer] {
         guard !existingPrayers.isEmpty else { return newPrayers }
-        
         return newPrayers.map { newPrayer in
-            if let existingPrayer = existingPrayers.first(where: { $0.id == newPrayer.id }) {
-                if existingPrayer.status == .completed {
-                    var finalPrayer = newPrayer
-                    finalPrayer.status = .completed
-                    return finalPrayer
-                }
+            if let existingPrayer = existingPrayers.first(where: { $0.id == newPrayer.id }), existingPrayer.status == .completed {
+                var finalPrayer = newPrayer
+                finalPrayer.status = .completed
+                return finalPrayer
             }
             return newPrayer
         }
@@ -237,7 +195,7 @@ class PrayerReminderViewModel: NSObject, ObservableObject, CLLocationManagerDele
 
     func refreshPrayerTimes() async {
         guard let lat = lastFetchedLatitude, let lon = lastFetchedLongitude else {
-            requestLocation()
+            locationService.requestLocationAuthorization()
             return
         }
         await fetchPrayerTimes(latitude: lat, longitude: lon)
@@ -293,22 +251,21 @@ class PrayerReminderViewModel: NSObject, ObservableObject, CLLocationManagerDele
         if prayers[index].status != newStatus {
             prayers[index].status = newStatus
             
-            PrayerReminderRepeater.shared.cancelRepeatingReminders(for: prayer)
+            if newStatus == .completed {
+                // UPDATED: Trigger haptic feedback
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
+                PrayerReminderRepeater.shared.cancelRepeatingReminders(for: prayer)
+            }
         }
     }
     
     // MARK: - Reminders & Notifications
-    
     private func scheduleAllReminders(for prayers: [Prayer]) {
         PrayerNotificationScheduler.shared.cancelAllNotifications()
         PrayerNotificationScheduler.shared.scheduleNotifications(for: prayers)
         
         if reminderEnabled {
-            PrayerReminderRepeater.shared.scheduleAllFollowUpReminders(
-                for: prayers,
-                every: userReminderIntervalInMinutes,
-                using: timeLogicHelper
-            )
+            PrayerReminderRepeater.shared.scheduleAllFollowUpReminders(for: prayers, every: userReminderIntervalInMinutes, using: timeLogicHelper)
         }
     }
     

@@ -45,7 +45,8 @@ class PrayerReminderRepeater {
                 content.categoryIdentifier = PrayerNotificationScheduler.prayerCategoryIdentifier
                 content.userInfo = ["prayerName": currentPrayer.name]
 
-                let components = Calendar.current.dateComponents([.hour, .minute], from: reminderTime)
+                // **FIX**: Use a more specific date component for the trigger to ensure reliability.
+                let components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: reminderTime)
                 let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
                 
                 // Create a unique identifier for each individual reminder.

@@ -18,11 +18,12 @@ struct PrayerReminderView: View {
                     .ignoresSafeArea()
 
                 // Main content area
-                // CORRECTED: The check now correctly handles the loading, language changing, and failure states.
+                // UPDATED: The check now passes the specific error message to the LoadingView
                 if viewModel.isLoading || viewModel.isLanguageChanging || viewModel.loadingFailed {
                     LoadingView(
                         title: NSLocalizedString("Loading...", comment: "Loading indicator message"),
                         hasFailed: viewModel.loadingFailed,
+                        errorMessage: viewModel.errorMessage,
                         onRetry: {
                             // The retry button will call the initial data load function again.
                             viewModel.loadInitialData()

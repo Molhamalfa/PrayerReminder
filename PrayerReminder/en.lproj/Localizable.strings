@@ -1,5 +1,4 @@
-/* 
-  Localizable.strings
+/* Localizable.strings
   PrayerReminder
 
   Created by Mac on 25.07.2025.
@@ -11,42 +10,48 @@
 "Language" = "Language";
 "App Language" = "App Language";
 "English" = "English";
-"Home" = "Home";
 "Settings" = "Settings";
-"Time to pray" = "Time to pray";
-"It's time for %@" = "It's time for %@";
-"Reminder to Pray" = "Reminder to Pray";
-"You haven’t marked %@ as prayed yet." = "You haven’t marked %@ as prayed yet.";
 "Prayed" = "Prayed";
+"Completed" = "Completed";
 "Missed" = "Missed";
 "Active" = "Active";
-"Coming Soon" = "Coming Soon";
-"Prayer Times" = "Prayer Times";
-"Today's Prayers" = "Today's Prayers";
-"Time until %@" = "Time until %@";
-"Prayer times not available" = "Prayer times not available";
+"Upcoming" = "Upcoming";
 "Loading..." = "Loading...";
 "Reminder Interval" = "Reminder Interval";
 "If you notice any glitches while changing languages, please try exiting the app completely and re-entering after changing the language." = "If you notice any glitches while changing languages, please try exiting the app completely and re-entering after changing the language.";
 "Fajr" = "Fajr";
+"Sunrise" = "Sunrise";
 "Dhuhr" = "Dhuhr";
 "Asr" = "Asr";
 "Maghrib" = "Maghrib";
 "Isha" = "Isha";
-"العربية" = "العربية"; // Keeping as Arabic script as per your SettingsView
-"Türkçe" = "Türkçe"; // Keeping as Turkish script as per your SettingsView
-"Prayer Time Calculation Method" = "Prayer Time Calculation Method";
-"Method" = "Method";
-"Shia Ithna-Ashari" = "Shia Ithna-Ashari";
-"University of Islamic Sciences, Karachi" = "University of Islamic Sciences, Karachi";
-"Islamic Society of North America" = "Islamic Society of North America";
-"Muslim World League" = "Muslim World League";
-"Umm Al-Qura University, Makkah" = "Umm Al-Qura University, Makkah";
-"Egyptian General Authority of Survey" = "Egyptian General Authority of Survey";
-"Institute of Geophysics, University of Tehran" = "Institute of Geophysics, University of Tehran";
-"Kuwait" = "Kuwait";
-"Qatar" = "Qatar";
-"Majlis Ugama Islam Singapura (MUIS)" = "Majlis Ugama Islam Singapura (MUIS)";
-"Union Organization Islamic de France" = "Union Organization Islamic de France";
-"Diyanet İşleri Başkanlığı, Turkey" = "Diyanet İşleri Başkanlığı, Turkey";
-"Spiritual Administration of Muslims of Russia" = "Spiritual Administration of Muslims of Russia";
+"العربية" = "العربية";
+"Türkçe" = "Türkçe";
+
+// Main View
+"Next Prayer: %@" = "Next Prayer: %@";
+"All prayers done for today!" = "All prayers done for today!";
+"Today's Prayer Summary" = "Today's Prayer Summary";
+"Prayed Prayers:" = "Prayed Prayers:";
+"No prayers marked as prayed yet." = "No prayers marked as prayed yet.";
+"Missed Prayers:" = "Missed Prayers:";
+"No prayers missed yet." = "No prayers missed yet.";
+"Upcoming Prayers:" = "Upcoming Prayers:";
+"All prayers completed or missed for today." = "All prayers completed or missed for today.";
+"Prayer History Calendar" = "Prayer History Calendar";
+
+// Notifications
+"It's time to pray" = "It's time to pray";
+"The time for %@ is now." = "The time for %@ is now.";
+"Prayer Reminder" = "Prayer Reminder";
+"Have you prayed %@ yet? Tap 'Prayed' to stop these reminders." = "Have you prayed %@ yet? Tap 'Prayed' to stop these reminders.";
+
+// Error Messages
+"Failed to load data." = "Failed to load data.";
+"Try Again" = "Try Again";
+"The API URL is invalid." = "The API URL is invalid.";
+"No data received from the API." = "No data received from the API.";
+"Failed to process the response from the server." = "Failed to process the response from the server.";
+"Could not find prayer times for the specified location. Please check your connection or location settings." = "Could not find prayer times for the specified location. Please check your connection or location settings.";
+"The prayer time server is currently unavailable. Please try again later." = "The prayer time server is currently unavailable. Please try again later.";
+"An unknown error occurred." = "An unknown error occurred.";

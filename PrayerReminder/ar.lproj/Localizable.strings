@@ -1,5 +1,4 @@
-/* 
-  Localizable.strings
+/* Localizable.strings
   PrayerReminder
 
   Created by Mac on 25.07.2025.
@@ -10,43 +9,49 @@
 "Remind every %d minutes" = "تذكير كل %d دقيقة";
 "Language" = "اللغة";
 "App Language" = "لغة التطبيق";
-"English" = "الإنجليزية";
-"Home" = "الرئيسية";
+"English" = "English";
 "Settings" = "الإعدادات";
-"Time to pray" = "حان وقت الصلاة";
-"It's time for %@" = "حان وقت صلاة %@";
-"Reminder to Pray" = "تذكير بالصلاة";
-"You haven’t marked %@ as prayed yet." = "لم تقم بتحديد صلاة %@ كمصلى بعد.";
 "Prayed" = "تمت الصلاة";
+"Completed" = "مكتمل";
 "Missed" = "فائتة";
-"Active" = "حالياً";
-"Coming Soon" = "قريباً";
-"Prayer Times" = "أوقات الصلاة";
-"Today's Prayers" = "صلوات اليوم";
-"Time until %@" = "الوقت المتبقي حتى %@";
-"Prayer times not available" = "أوقات الصلاة غير متاحة";
+"Active" = "حالي";
+"Upcoming" = "قادم";
 "Loading..." = "جار التحميل...";
 "Reminder Interval" = "فترة التذكير";
 "If you notice any glitches while changing languages, please try exiting the app completely and re-entering after changing the language." = "إذا لاحظت أي مشاكل أثناء تغيير اللغة، يرجى محاولة الخروج من التطبيق بالكامل وإعادة الدخول بعد تغيير اللغة.";
 "Fajr" = "الفجر";
+"Sunrise" = "الشروق";
 "Dhuhr" = "الظهر";
 "Asr" = "العصر";
 "Maghrib" = "المغرب";
 "Isha" = "العشاء";
 "العربية" = "العربية";
-"Türkçe" = "التركية";
-"Prayer Time Calculation Method" = "طريقة حساب وقت الصلاة";
-"Method" = "الطريقة";
-"Shia Ithna-Ashari" = "الشيعة الاثنا عشرية";
-"University of Islamic Sciences, Karachi" = "جامعة العلوم الإسلامية، كراتشي";
-"Islamic Society of North America" = "الجمعية الإسلامية لأمريكا الشمالية";
-"Muslim World League" = "رابطة العالم الإسلامي";
-"Umm Al-Qura University, Makkah" = "جامعة أم القرى، مكة المكرمة";
-"Egyptian General Authority of Survey" = "الهيئة المصرية العامة للمساحة";
-"Institute of Geophysics, University of Tehran" = "معهد الجيوفيزياء، جامعة طهران";
-"Kuwait" = "الكويت";
-"Qatar" = "قطر";
-"Majlis Ugama Islam Singapura (MUIS)" = "المجلس الإسلامي الديني في سنغافورة (MUIS)";
-"Union Organization Islamic de France" = "اتحاد المنظمات الإسلامية في فرنسا";
-"Diyanet İşleri Başkanlığı, Turkey" = "رئاسة الشؤون الدينية، تركيا";
-"Spiritual Administration of Muslims of Russia" = "الإدارة الروحية لمسلمي روسيا";
+"Türkçe" = "Türkçe";
+
+// Main View
+"Next Prayer: %@" = "الصلاة التالية: %@";
+"All prayers done for today!" = "لقد أديت جميع صلوات اليوم!";
+"Today's Prayer Summary" = "ملخص صلوات اليوم";
+"Prayed Prayers:" = "الصلوات المؤداة:";
+"No prayers marked as prayed yet." = "لم يتم تحديد أي صلاة كمؤداة بعد.";
+"Missed Prayers:" = "الصلوات الفائتة:";
+"No prayers missed yet." = "لا توجد صلوات فائتة بعد.";
+"Upcoming Prayers:" = "الصلوات القادمة:";
+"All prayers completed or missed for today." = "جميع صلوات اليوم تمت أو فاتت.";
+"Prayer History Calendar" = "تقويم سجل الصلوات";
+
+// Notifications
+"It's time to pray" = "حان وقت الصلاة";
+"The time for %@ is now." = "حان الآن وقت صلاة %@.";
+"Prayer Reminder" = "تذكير بالصلاة";
+"Have you prayed %@ yet? Tap 'Prayed' to stop these reminders." = "هل صليت %@؟ اضغط على 'تمت الصلاة' لإيقاف هذه التذكيرات.";
+
+// Error Messages
+"Failed to load data." = "فشل تحميل البيانات.";
+"Try Again" = "حاول مرة أخرى";
+"The API URL is invalid." = "عنوان API غير صالح.";
+"No data received from the API." = "لم يتم استلام بيانات من الخادم.";
+"Failed to process the response from the server." = "فشل في معالجة الاستجابة من الخادم.";
+"Could not find prayer times for the specified location. Please check your connection or location settings." = "تعذر العثور على أوقات الصلاة للموقع المحدد. يرجى التحقق من اتصالك أو إعدادات الموقع.";
+"The prayer time server is currently unavailable. Please try again later." = "خادم أوقات الصلاة غير متاح حاليًا. يرجى المحاولة مرة أخرى لاحقًا.";
+"An unknown error occurred." = "حدث خطأ غير معروف.";

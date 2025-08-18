@@ -1,5 +1,4 @@
-/* 
-  Localizable.strings
+/* Localizable.strings
   PrayerReminder
 
   Created by Mac on 25.07.2025.
@@ -10,43 +9,49 @@
 "Remind every %d minutes" = "Her %d dakikada bir hatırlat";
 "Language" = "Dil";
 "App Language" = "Uygulama Dili";
-"English" = "İngilizce";
-"Home" = "Ana Sayfa";
+"English" = "English";
 "Settings" = "Ayarlar";
-"Time to pray" = "Namaz Vakti";
-"It's time for %@" = "%@ namazı vakti geldi.";
-"Reminder to Pray" = "Namaz Hatırlatıcısı";
-"You haven’t marked %@ as prayed yet." = "%@ namazını henüz kılmadınız.";
 "Prayed" = "Kılındı";
+"Completed" = "Tamamlandı";
 "Missed" = "Kaçırıldı";
 "Active" = "Aktif";
-"Coming Soon" = "Yakında";
-"Prayer Times" = "Namaz Vakitleri";
-"Today's Prayers" = "Bugünkü Namazlar";
-"Time until %@" = "%@'a kalan süre";
-"Prayer times not available" = "Namaz vakitleri mevcut değil";
+"Upcoming" = "Yaklaşan";
 "Loading..." = "Yükleniyor...";
 "Reminder Interval" = "Hatırlatma Aralığı";
 "If you notice any glitches while changing languages, please try exiting the app completely and re-entering after changing the language." = "Dil değiştirirken herhangi bir aksaklık fark ederseniz, lütfen uygulamadan tamamen çıkıp tekrar girmeyi deneyin.";
 "Fajr" = "İmsak";
+"Sunrise" = "Güneş";
 "Dhuhr" = "Öğle";
 "Asr" = "İkindi";
 "Maghrib" = "Akşam";
 "Isha" = "Yatsı";
-"العربية" = "Arapça";
+"العربية" = "العربية";
 "Türkçe" = "Türkçe";
-"Prayer Time Calculation Method" = "Namaz Vakti Hesaplama Yöntemi";
-"Method" = "Yöntem";
-"Shia Ithna-Ashari" = "Şii Oniki İmam";
-"University of Islamic Sciences, Karachi" = "Karaçi İslam Bilimleri Üniversitesi";
-"Islamic Society of North America" = "Kuzey Amerika İslam Topluluğu";
-"Muslim World League" = "Müslüman Dünya Ligi";
-"Umm Al-Qura University, Makkah" = "Ümmü'l-Kurra Üniversitesi, Mekke";
-"Egyptian General Authority of Survey" = "Mısır Genel Araştırma Kurumu";
-"Institute of Geophysics, University of Tehran" = "Jeofizik Enstitüsü, Tahran Üniversitesi";
-"Kuwait" = "Kuveyt";
-"Qatar" = "Katar";
-"Majlis Ugama Islam Singapura (MUIS)" = "Singapur İslam Dini Konseyi (MUIS)";
-"Union Organization Islamic de France" = "Fransa İslam Örgütleri Birliği";
-"Diyanet İşleri Başkanlığı, Turkey" = "Diyanet İşleri Başkanlığı, Türkiye";
-"Spiritual Administration of Muslims of Russia" = "Rusya Müslümanları Manevi İdaresi";
+
+// Main View
+"Next Prayer: %@" = "Sıradaki Vakit: %@";
+"All prayers done for today!" = "Bugünkü tüm namazlar kılındı!";
+"Today's Prayer Summary" = "Bugünün Namaz Özeti";
+"Prayed Prayers:" = "Kılınan Namazlar:";
+"No prayers marked as prayed yet." = "Henüz kılınmış namaz işaretlenmedi.";
+"Missed Prayers:" = "Kaçırılan Namazlar:";
+"No prayers missed yet." = "Henüz kaçırılmış namaz yok.";
+"Upcoming Prayers:" = "Yaklaşan Namazlar:";
+"All prayers completed or missed for today." = "Bugünkü tüm namazlar kılındı veya kaçırıldı.";
+"Prayer History Calendar" = "Namaz Geçmişi Takvimi";
+
+// Notifications
+"It's time to pray" = "Namaz Vakti";
+"The time for %@ is now." = "Şimdi %@ vakti.";
+"Prayer Reminder" = "Namaz Hatırlatıcısı";
+"Have you prayed %@ yet? Tap 'Prayed' to stop these reminders." = "%@ namazını kıldınız mı? Bu hatırlatıcıları durdurmak için 'Kılındı'ya dokunun.";
+
+// Error Messages
+"Failed to load data." = "Veriler yüklenemedi.";
+"Try Again" = "Tekrar Dene";
+"The API URL is invalid." = "API adresi geçersiz.";
+"No data received from the API." = "Sunucudan veri alınamadı.";
+"Failed to process the response from the server." = "Sunucudan gelen yanıt işlenemedi.";
+"Could not find prayer times for the specified location. Please check your connection or location settings." = "Belirtilen konum için namaz vakitleri bulunamadı. Lütfen bağlantınızı veya konum ayarlarınızı kontrol edin.";
+"The prayer time server is currently unavailable. Please try again later." = "Namaz vakti sunucusu şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.";
+"An unknown error occurred." = "Bilinmeyen bir hata oluştu.";

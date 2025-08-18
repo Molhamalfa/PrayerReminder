@@ -74,7 +74,7 @@ class PrayerTimeLogicHelper {
         return nil
     }
     
-    /// NEW: Creates pairs of (Current Prayer, Next Prayer) to define prayer windows.
+    /// Creates pairs of (Current Prayer, Next Prayer) to define prayer windows.
     /// This is used for scheduling repeating reminders.
     func getPrayerWindows(from prayers: [Prayer]) -> [(current: Prayer, next: Prayer)] {
         // Filter out "Sunrise" as it does not have a prayer window for reminders.
@@ -86,6 +86,14 @@ class PrayerTimeLogicHelper {
         for i in 0..<(relevantPrayers.count - 1) {
             windows.append((current: relevantPrayers[i], next: relevantPrayers[i+1]))
         }
+        
+        // **FIX**: Manually create a window for the last prayer (Isha) until the end of the day.
+        if let lastPrayer = relevantPrayers.last {
+            // Create a "dummy" prayer to represent the end of the day for the window calculation.
+            let endOfDayPrayer = Prayer(name: "EndOfDay", time: "23:59", status: .upcoming)
+            windows.append((current: lastPrayer, next: endOfDayPrayer))
+        }
+        
         return windows
     }
 

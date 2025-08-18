@@ -9,9 +9,8 @@ import SwiftUI
 
 struct LoadingView: View {
     var title: String
-    // NEW: State to determine if loading has failed.
     var hasFailed: Bool
-    // NEW: A closure to be executed when the user taps the retry button.
+    var errorMessage: String? // UPDATED: To hold a specific error message
     var onRetry: (() -> Void)?
 
     var body: some View {
@@ -21,14 +20,16 @@ struct LoadingView: View {
                     .font(.largeTitle)
                     .foregroundColor(.red)
                 
-                Text(NSLocalizedString("Failed to load data.", comment: "Error message when data loading fails"))
+                // UPDATED: Display specific error message if available, otherwise a generic one
+                Text(errorMessage ?? NSLocalizedString("Failed to load data.", comment: "Generic error message"))
                     .font(.headline)
                     .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
                 
-                // Show the retry button only if an onRetry action has been provided.
                 if let onRetry = onRetry {
                     Button(action: onRetry) {
-                        Label(NSLocalizedString("Try Again", comment: "Button title to retry a failed action"), systemImage: "arrow.clockwise")
+                        Label(NSLocalizedString("Try Again", comment: "Retry button"), systemImage: "arrow.clockwise")
                             .padding(.horizontal, 20)
                             .padding(.vertical, 10)
                             .background(Color.blue)
@@ -60,7 +61,7 @@ struct LoadingView: View {
 
 #Preview("Failed State") {
     // Preview for the failed state with a retry button
-    LoadingView(title: "", hasFailed: true, onRetry: {
+    LoadingView(title: "", hasFailed: true, errorMessage: "The server is currently unavailable.", onRetry: {
         print("Retry tapped!")
     })
 }

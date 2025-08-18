@@ -1,4 +1,4 @@
-////
+//
 //  PrayerStatusSummaryView.swift
 //  PrayerReminder
 //
@@ -41,8 +41,10 @@ struct PrayerStatusSummaryView: View {
                             HStack {
                                 Image(systemName: "checkmark.circle.fill")
                                     .foregroundColor(.green)
+                                    // UPDATED: Accessibility
+                                    .accessibilityLabel(Text(NSLocalizedString("Completed", comment: "Accessibility label")))
                                 Text(NSLocalizedString(prayer.name, comment: ""))
-                                    .foregroundColor(isDay ? .black.opacity(0.8) : .white) // FIX: Adjusted color
+                                    .foregroundColor(isDay ? .black.opacity(0.8) : .white)
                                 Spacer()
                                 Text(prayer.time)
                                     .font(.caption)
@@ -80,8 +82,10 @@ struct PrayerStatusSummaryView: View {
                             HStack {
                                 Image(systemName: "xmark.circle.fill")
                                     .foregroundColor(.red)
+                                    // UPDATED: Accessibility
+                                    .accessibilityLabel(Text(NSLocalizedString("Missed", comment: "Accessibility label")))
                                 Text(NSLocalizedString(prayer.name, comment: ""))
-                                    .foregroundColor(isDay ? .black.opacity(0.8) : .white) // FIX: Adjusted color
+                                    .foregroundColor(isDay ? .black.opacity(0.8) : .white)
                                 Spacer()
                                 Text(prayer.time)
                                     .font(.caption)
@@ -123,9 +127,10 @@ struct PrayerStatusSummaryView: View {
                                     HStack {
                                         Image(systemName: "hourglass")
                                             .foregroundColor(.blue)
+                                            .accessibilityLabel(Text(NSLocalizedString("Upcoming", comment: "Accessibility label")))
                                         Text(NSLocalizedString(prayer.name, comment: ""))
                                             .font(.headline)
-                                            .foregroundColor(isDay ? .black.opacity(0.8) : .white) // FIX: Adjusted color
+                                            .foregroundColor(isDay ? .black.opacity(0.8) : .white)
                                     }
                                     Text(prayer.time)
                                         .font(.subheadline)
@@ -160,23 +165,5 @@ struct PrayerStatusSummaryView: View {
             .padding(.horizontal)
         }
         .padding(.vertical)
-    }
-}
-
-#Preview {
-    ZStack {
-        LinearGradient(gradient: Gradient(colors: [Color.blue.opacity(0.7), Color.purple.opacity(0.5)]), startPoint: .top, endPoint: .bottom)
-            .ignoresSafeArea()
-        PrayerStatusSummaryView(
-            prayers: [
-                Prayer(name: "Fajr", time: "04:30", status: .completed),
-                Prayer(name: "Sunrise", time: "06:00", status: .upcoming),
-                Prayer(name: "Dhuhr", time: "13:00", status: .upcoming),
-                Prayer(name: "Asr", time: "17:00", status: .missed),
-                Prayer(name: "Maghrib", time: "19:00", status: .upcoming),
-                Prayer(name: "Isha", time: "21:00", status: .upcoming)
-            ],
-            isDay: false
-        )
     }
 }
