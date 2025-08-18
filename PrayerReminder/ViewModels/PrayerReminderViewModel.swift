@@ -16,7 +16,8 @@ class PrayerReminderViewModel: NSObject, ObservableObject, CLLocationManagerDele
     @AppStorage("userReminderIntervalInMinutes") private var userReminderIntervalInMinutes: Int = 10
     @AppStorage("reminderEnabled") private var reminderEnabled: Bool = true
     @AppStorage("selectedLanguageCode") private var selectedLanguageCode: String = "en"
-    @AppStorage("selectedCalculationMethod") private var selectedCalculationMethod: Int = 2
+    // REMOVED: The manual calculation method is no longer needed.
+    // @AppStorage("selectedCalculationMethod") private var selectedCalculationMethod: Int = 12
     @AppStorage("lastFetchedDate") private var lastFetchedDate: String = ""
 
     // MARK: - Published Properties for UI
@@ -190,15 +191,16 @@ class PrayerReminderViewModel: NSObject, ObservableObject, CLLocationManagerDele
 
     // MARK: - API & Data Fetching
     func fetchPrayerTimes(latitude: Double, longitude: Double) async {
-        print("🌐 ViewModel: Fetching prayer times for \(latitude), \(longitude) using method \(selectedCalculationMethod)...")
+        // CORRECTED: Log message no longer includes a method.
+        print("🌐 ViewModel: Fetching prayer times for \(latitude), \(longitude) using automatic method detection...")
         self.isLoading = true
         self.loadingFailed = false
         
         do {
+            // CORRECTED: The call to the API service no longer passes a manual method.
             let fetchedPrayers = try await apiService.fetchPrayerTimes(
                 latitude: latitude,
                 longitude: longitude,
-                method: selectedCalculationMethod,
                 using: self.timeLogicHelper
             )
             

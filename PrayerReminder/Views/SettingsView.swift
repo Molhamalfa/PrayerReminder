@@ -11,6 +11,7 @@ struct SettingsView: View {
     @AppStorage("reminderEnabled") private var reminderEnabled: Bool = true
     @AppStorage("userReminderIntervalInMinutes") private var userReminderIntervalInMinutes: Int = 10
     @AppStorage("selectedLanguageCode") private var selectedLanguageCode: String = "en"
+    // REMOVED: The AppStorage property for the calculation method is no longer needed.
     
     @EnvironmentObject var viewModel: PrayerReminderViewModel
 
@@ -20,8 +21,7 @@ struct SettingsView: View {
         Form {
             Section(header: Text(LocalizedStringKey("Reminders"))) {
                 Toggle(LocalizedStringKey("Enable Prayer Reminders"), isOn: $reminderEnabled)
-                    .onChange(of: reminderEnabled) { oldValue, newValue in
-                        // CORRECTED: Call the new, correct function name.
+                    .onChange(of: reminderEnabled) { _, _ in
                         viewModel.handleReminderSettingsChange()
                     }
 
@@ -35,12 +35,14 @@ struct SettingsView: View {
                         Text(LocalizedStringKey("Reminder Interval"))
                     }
                     .pickerStyle(.menu)
-                    .onChange(of: userReminderIntervalInMinutes) { oldValue, newValue in
-                        // CORRECTED: Call the new, correct function name.
+                    .onChange(of: userReminderIntervalInMinutes) { _, _ in
                         viewModel.handleReminderSettingsChange()
                     }
                 }
             }
+            
+            // REMOVED: The entire section for manually selecting a calculation method has been removed.
+            // The app now handles this automatically for better accuracy and user experience.
 
             Section(header: Text(LocalizedStringKey("Language"))) {
                 Picker(LocalizedStringKey("App Language"), selection: $selectedLanguageCode) {
@@ -49,7 +51,7 @@ struct SettingsView: View {
                     Text(LocalizedStringKey("Türkçe")).tag("tr")
                 }
                 .pickerStyle(.menu)
-                .onChange(of: selectedLanguageCode) { oldValue, newLanguageCode in
+                .onChange(of: selectedLanguageCode) { _, newLanguageCode in
                     viewModel.applyLanguageChange(newLanguageCode)
                 }
 
@@ -65,6 +67,8 @@ struct SettingsView: View {
 
 
 #Preview {
-    SettingsView()
-        .environmentObject(PrayerReminderViewModel())
+    NavigationView {
+        SettingsView()
+            .environmentObject(PrayerReminderViewModel())
+    }
 }

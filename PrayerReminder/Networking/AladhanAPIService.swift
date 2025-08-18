@@ -32,15 +32,11 @@ enum APIError: Error, LocalizedError {
 }
 
 class AladhanAPIService {
-    /// Fetches prayer times from the Aladhan API and correctly sets their initial status.
-    /// - Parameters:
-    ///   - latitude: The user's latitude.
-    ///   - longitude: The user's longitude.
-    ///   - method: The calculation method for prayer times.
-    ///   - timeHelper: An instance of `PrayerTimeLogicHelper` to determine the initial status of prayers.
-    /// - Returns: An array of `Prayer` objects with their correct initial status (`.upcoming` or `.missed`).
-    func fetchPrayerTimes(latitude: Double, longitude: Double, method: Int, using timeHelper: PrayerTimeLogicHelper) async throws -> [Prayer] {
-        let urlString = "https://api.aladhan.com/v1/timingsByAddress?address=\(latitude),\(longitude)&method=\(method)"
+    /// Fetches prayer times from the Aladhan API using automatic method detection.
+    func fetchPrayerTimes(latitude: Double, longitude: Double, using timeHelper: PrayerTimeLogicHelper) async throws -> [Prayer] {
+        // CORRECTED: The URL no longer includes a `method` parameter.
+        // This tells the API to automatically determine the best method for the given location.
+        let urlString = "https://api.aladhan.com/v1/timingsByAddress?address=\(latitude),\(longitude)"
         
         guard let url = URL(string: urlString) else {
             throw APIError.invalidURL
@@ -64,7 +60,6 @@ class AladhanAPIService {
                 throw APIError.noData
             }
 
-            // Create a temporary list of prayers, all defaulting to .upcoming.
             let initialPrayers = [
                 Prayer(name: "Fajr", time: timings.Fajr, status: .upcoming),
                 Prayer(name: "Sunrise", time: timings.Sunrise, status: .upcoming),
@@ -74,12 +69,8 @@ class AladhanAPIService {
                 Prayer(name: "Isha", time: timings.Isha, status: .upcoming)
             ]
             
-            // CORRECTED: Map over the initial list and use the time helper to set the
-            // correct status for each prayer *before* returning the data.
-            // This prevents the race condition and rapid UI updates.
             let prayersWithCorrectStatus = initialPrayers.map { prayer -> Prayer in
                 var correctedPrayer = prayer
-                // If the prayer's window has already ended today, mark it as missed from the start.
                 if timeHelper.hasPrayerWindowEnded(for: prayer, allPrayers: initialPrayers) {
                     correctedPrayer.status = .missed
                 }
