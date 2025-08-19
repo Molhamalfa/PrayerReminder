@@ -21,7 +21,7 @@ class PrayerReminderViewModel: NSObject, ObservableObject, UNUserNotificationCen
     // MARK: - Published Properties for UI
     @Published var isLoading = true
     @Published var loadingFailed = false
-    @Published var errorMessage: String? = nil // UPDATED: For specific error messages
+    @Published var errorMessage: String? = nil
     @Published var isLanguageChanging = false
     @Published var refreshID = UUID()
     @Published var prayers: [Prayer] = []
@@ -35,7 +35,7 @@ class PrayerReminderViewModel: NSObject, ObservableObject, UNUserNotificationCen
     // MARK: - Private Properties
     private let dataStore = CloudKitDataStore()
     private let timeLogicHelper = PrayerTimeLogicHelper()
-    private let locationService = LocationService() // UPDATED: Use the new service
+    private let locationService = LocationService()
     private let apiService = AladhanAPIService()
     private var cancellables = Set<AnyCancellable>()
     private var isSaving = false
@@ -44,7 +44,7 @@ class PrayerReminderViewModel: NSObject, ObservableObject, UNUserNotificationCen
     override init() {
         super.init()
         setupNotificationDelegate()
-        setupLocationSubscriber() // UPDATED: New setup method
+        setupLocationSubscriber()
         startTimer()
         
         $prayers
@@ -60,7 +60,6 @@ class PrayerReminderViewModel: NSObject, ObservableObject, UNUserNotificationCen
         PrayerNotificationScheduler.shared.registerNotificationCategory()
     }
     
-    // UPDATED: Subscribes to the location service's publisher
     private func setupLocationSubscriber() {
         locationService.locationPublisher
             .sink { [weak self] result in
@@ -134,7 +133,7 @@ class PrayerReminderViewModel: NSObject, ObservableObject, UNUserNotificationCen
         }
     }
 
-    // MARK: - Location Management (UPDATED)
+    // MARK: - Location Management
     private func handleLocationUpdate(_ location: CLLocation) {
         lastFetchedLatitude = location.coordinate.latitude
         lastFetchedLongitude = location.coordinate.longitude
@@ -152,7 +151,6 @@ class PrayerReminderViewModel: NSObject, ObservableObject, UNUserNotificationCen
 
     private func handleLocationFailure(_ error: Error) {
         print("❌ ViewModel: Location failure from service. Using fallback.")
-        // Use fallback location (e.g., Istanbul)
         Task {
             await fetchPrayerTimes(latitude: 41.0082, longitude: 28.9784)
         }
@@ -169,7 +167,10 @@ class PrayerReminderViewModel: NSObject, ObservableObject, UNUserNotificationCen
             let fetchedPrayers = try await apiService.fetchPrayerTimes(latitude: latitude, longitude: longitude, using: self.timeLogicHelper)
             let mergedPrayers = self.merge(newPrayers: fetchedPrayers, with: self.prayers)
             self.prayers = mergedPrayers
+            
+            // This is the crucial step to update the date after a successful fetch.
             self.lastFetchedDate = DateFormatter.databaseKeyFormatter.string(from: Date())
+            
             isLoading = false
             scheduleAllReminders(for: mergedPrayers)
             print("✅ ViewModel: Successfully fetched prayer times.")
@@ -208,8 +209,21 @@ class PrayerReminderViewModel: NSObject, ObservableObject, UNUserNotificationCen
             .sink { [weak self] _ in
                 self?.updateTimeUntilNextPrayer()
                 self?.updatePrayerWindowStatus()
+                // NEW: Check if the day has changed on every timer tick.
+                self?.checkForNewDay()
             }
             .store(in: &cancellables)
+    }
+    
+    // NEW: This function checks if the date has changed and triggers a refresh.
+    private func checkForNewDay() {
+        let todayKey = DateFormatter.databaseKeyFormatter.string(from: Date())
+        if todayKey != lastFetchedDate {
+            print("🌅 ViewModel: New day detected! Refreshing prayer times.")
+            // Calling loadInitialData will trigger the entire refresh flow,
+            // including fetching new times and rescheduling all notifications.
+            loadInitialData()
+        }
     }
 
     private func updateTimeUntilNextPrayer() {
@@ -252,7 +266,6 @@ class PrayerReminderViewModel: NSObject, ObservableObject, UNUserNotificationCen
             prayers[index].status = newStatus
             
             if newStatus == .completed {
-                // UPDATED: Trigger haptic feedback
                 UINotificationFeedbackGenerator().notificationOccurred(.success)
                 PrayerReminderRepeater.shared.cancelRepeatingReminders(for: prayer)
             }

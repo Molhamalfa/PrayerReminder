@@ -18,14 +18,12 @@ struct PrayerReminderView: View {
                     .ignoresSafeArea()
 
                 // Main content area
-                // UPDATED: The check now passes the specific error message to the LoadingView
                 if viewModel.isLoading || viewModel.isLanguageChanging || viewModel.loadingFailed {
                     LoadingView(
                         title: NSLocalizedString("Loading...", comment: "Loading indicator message"),
                         hasFailed: viewModel.loadingFailed,
                         errorMessage: viewModel.errorMessage,
                         onRetry: {
-                            // The retry button will call the initial data load function again.
                             viewModel.loadInitialData()
                         }
                     )
@@ -57,7 +55,12 @@ struct PrayerReminderView: View {
                                     isDay: viewModel.isDay
                                 )
                                 
-                                PrayerStatusSummaryView(prayers: viewModel.prayers, isDay: viewModel.isDay)
+                                // UPDATED: Pass the isPrayerCurrentlyActive function to the summary view.
+                                PrayerStatusSummaryView(
+                                    prayers: viewModel.prayers,
+                                    isDay: viewModel.isDay,
+                                    isPrayerCurrentlyActive: viewModel.isPrayerCurrentlyActive
+                                )
                                 
                                 PrayerCalendarView(isDay: viewModel.isDay)
                                     .environmentObject(viewModel)

@@ -10,6 +10,8 @@ import SwiftUI
 struct PrayerStatusSummaryView: View {
     let prayers: [Prayer]
     let isDay: Bool
+    // NEW: Closure to check if a prayer is currently active.
+    let isPrayerCurrentlyActive: (Prayer) -> Bool
 
     private var completedPrayers: [Prayer] {
         prayers.filter { $0.status == .completed && $0.name != "Sunrise" }
@@ -19,8 +21,9 @@ struct PrayerStatusSummaryView: View {
         prayers.filter { $0.status == .missed && $0.name != "Sunrise" }
     }
 
+    // UPDATED: This list now filters out the currently active prayer.
     private var upcomingPrayers: [Prayer] {
-        prayers.filter { $0.status == .upcoming }
+        prayers.filter { $0.status == .upcoming && !isPrayerCurrentlyActive($0) }
     }
     
     var body: some View {
@@ -41,7 +44,6 @@ struct PrayerStatusSummaryView: View {
                             HStack {
                                 Image(systemName: "checkmark.circle.fill")
                                     .foregroundColor(.green)
-                                    // UPDATED: Accessibility
                                     .accessibilityLabel(Text(NSLocalizedString("Completed", comment: "Accessibility label")))
                                 Text(NSLocalizedString(prayer.name, comment: ""))
                                     .foregroundColor(isDay ? .black.opacity(0.8) : .white)
@@ -82,7 +84,6 @@ struct PrayerStatusSummaryView: View {
                             HStack {
                                 Image(systemName: "xmark.circle.fill")
                                     .foregroundColor(.red)
-                                    // UPDATED: Accessibility
                                     .accessibilityLabel(Text(NSLocalizedString("Missed", comment: "Accessibility label")))
                                 Text(NSLocalizedString(prayer.name, comment: ""))
                                     .foregroundColor(isDay ? .black.opacity(0.8) : .white)
